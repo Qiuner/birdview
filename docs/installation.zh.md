@@ -60,6 +60,14 @@ Codex [官方技能文档](https://developers.openai.com/codex/skills) 指定用
 node <skill-root>/scripts/birdview.mjs setup --project <project-root>
 ```
 
+环境首次配置时，运行一次只读的技能兼容性清单：
+
+```sh
+node <skill-root>/scripts/birdview.mjs skills audit --project <project-root> --language zh --write <project-root>/.birdview/compatibility-audit.json --write-markdown <project-root>/.birdview/compatibility-audit.md
+```
+
+它记录已发现的技能目录、清单、重名和明显的触发元数据问题，不证明语义兼容性，也不会禁用技能。报告冲突前先阅读相关技能正文；技能或宿主规则变化后再重跑。
+
 Claude Code 添加 `--agent claude-code`，Harness 添加 `--agent deepseek`，默认目标为 Codex。初始化为新项目选择按需模式，保留已有自动、按需或停用设置。第三方安装器仅安装技能文件，不会执行这一步。按需模式下，基础约束仍指导编码，不要求加载技能或生成地图。状态显示两项设置。保留安装但关闭两者使用 `mode off`。这些规则依赖宿主加载项目指令文件，请在新任务中验证。
 
 分发版本默认**按需调用**。Codex 输入 `/skills` 选择 Birdview 或使用 `$birdview`；Claude Code 使用 `/birdview`。未开启自动模式时，普通修改不触发。其他宿主的斜杠入口取决于宿主支持。将下列占位符替换为绝对路径后配置或查询：

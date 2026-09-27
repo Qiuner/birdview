@@ -60,6 +60,14 @@ After installing the bundle, enable persistent foundation rules for each selecte
 node <skill-root>/scripts/birdview.mjs setup --project <project-root>
 ```
 
+On the first setup in an environment, run the read-only skill compatibility inventory once:
+
+```sh
+node <skill-root>/scripts/birdview.mjs skills audit --project <project-root> --language en --write <project-root>/.birdview/compatibility-audit.json --write-markdown <project-root>/.birdview/compatibility-audit.md
+```
+
+It records discovered skill roots, manifests, duplicate names and obvious trigger metadata issues. It does not prove semantic compatibility or disable skills. Read relevant skill bodies before reporting a conflict; rerun after skill or host-rule changes.
+
 Use `--agent claude-code` for Claude Code, `--agent deepseek` for Harness, or the default Codex target. Setup defaults new projects to on-demand and preserves existing auto, on-demand or off. The third-party installer only installs skill files and does not execute this step. In on-demand mode, the foundation still guides coding without loading the skill or requiring a map. Status shows both settings. Use `mode off` to disable both while retaining the installation. These rules require the host to load the project instruction file; verify in a fresh task.
 
 The distributed skill is **on-demand by default**. In Codex, select Birdview through `/skills` or use `$birdview`; in Claude Code, use `/birdview`. Ordinary edits do not trigger it unless auto mode is enabled. Slash commands in other hosts depend on host support. Configure or query using absolute paths:

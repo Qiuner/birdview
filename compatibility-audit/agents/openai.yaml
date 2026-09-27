@@ -1,0 +1,6 @@
+interface:
+  display_name: "Birdview Skills Audit"
+  short_description: "检查已安装技能的重复与潜在指令冲突"
+  default_prompt: "使用 $birdview-compatibility 检查已安装 skills 的兼容性，不修改配置。"
+policy:
+  allow_implicit_invocation: false

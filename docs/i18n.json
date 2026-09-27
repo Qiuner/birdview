@@ -3,6 +3,7 @@
   ".github/PULL_REQUEST_TEMPLATE.zh.md": "56106f78db7d5d103b2a68375c7a2f47368da3972393a697739245bf0a963420",
   "AGENTS.md": "52c81b2cb3c534858a753ed7f3703ec8d923d04b9b6cb02b6793af215beafd84",
   "AGENTS.zh.md": "e42f0c0be8d374c1d36fa885c3ec61e6569eb79d691c92dad55b53ccbddcad62",
+<<<<<<< HEAD
   "CONTRIBUTING.md": "735c0dfc43bd31754e91eeab58aa93fc3a3a8b6251790812dbb872ace7ffcc6e",
   "CONTRIBUTING.zh.md": "0f71a6ac6fdf7e2bbe183dca05fc2bb6875fae36b15e1453a8327240ee123684",
   "README.md": "a9f7ea46b307ba2d18d44cd6228451a5fbe2d11552b739b0ab439e92e5e18400",
@@ -11,6 +12,20 @@
   "SKILL.zh.md": "2fa48ae3949261f7987b55985d00a5134a5df54077b514cb5b7e23d1d9bf73bc",
   "docs/installation.md": "cd069571d8066e884ca31403abe854b9c71c0d272701b16938e0434fd2e39f38",
   "docs/installation.zh.md": "3dbe3722614f0de1a61dad9400d905e75fde2d8d45d3ad7624ec25fda4c274ca",
+=======
+  "CONTRIBUTING.md": "60ea6896d11f89835d577d5c94c23a75f2793bbf6c1fe9154efb093d25eb9d55",
+  "CONTRIBUTING.zh.md": "26a1a5c3c92e3363357bb36cc8ed7a02e1cba62e57e91d5e4c9fae42e27d3ae8",
+  "README.md": "c09c34b80e5475405f8ab8f38e56211c62e8173394c4800520dc51a3dd430b8b",
+  "README.zh.md": "87b6fc81914c455a80c4c9a9752acb354fdf3c2218c137249a89c12d8849c106",
+  "SKILL.md": "ce32f06d94450301cc26a7581c5b5be156b7eeb5273712b98c4c8b0c1bc2d302",
+  "SKILL.zh.md": "194d45a8d67d18625248084ca0390bfdb604843934d82750bd0c0c4436da553e",
+  "compatibility-audit/SKILL.md": "4de6aa0bb0308e57228a5817602f8c3361ecf760824e91f40a17f493e11d859a",
+  "compatibility-audit/SKILL.zh.md": "498cf35d317f4e63a347d1a6cfc9d9b4d3a03e1a577f85c1a24512ce267e2771",
+  "compatibility-audit/references/report-contract.md": "edbcc340395f1c8a98c1c063015363e7fca2debbf7da5399e57d739cb8a1b805",
+  "compatibility-audit/references/report-contract.zh.md": "02ebeb1ac03e6942e137e50004075ac2b5c68d65eb25d5baa8efc4a1c22cff66",
+  "docs/installation.md": "6e68da1336c8a23ff1b7d26f7569d9c4eaf1999ee25f6cb3cda576ca199c4de8",
+  "docs/installation.zh.md": "f9ad055cec34fb47b54e5ae36af8cd4e35bb63f765cee3dde9541a6f1b921aa8",
+>>>>>>> db973b7 (feat(compatibility): 增加技能触发兼容性体检 / add skill trigger compatibility audit)
   "docs/public-benchmark.md": "eda2c785e4b8613d2ee586bdd6f893fd5011eff7d1dc1035a00e062bf11bacd7",
   "docs/public-benchmark.zh.md": "c745e290a080201e18356453ead02038212e1c1a6c930f1e530d42ea22abe88f",
   "docs/quality-evaluation.md": "ef3060edf965b49995f73472e464b09d11a15f139fcf599d639c9a30d4446af8",
@@ -51,8 +66,14 @@
   "references/map-project.zh.md": "57a1bdf1c8695b9113ca62f8f31fb231575cf5c0f5855bce3861b7307db72121",
   "references/modes.md": "64b97168898d3d712fbdc037f01e9fcaaeb7bc7d9039d99dd616301efb964dd1",
   "references/modes.zh.md": "ae1af818fb6ecda0cc0d17af386cbce9992383f7df595535832319b416ee5634",
-  "references/review-architecture.md": "69a9e6670f79745a0ca6a4e3db690be71c79d7bb0b6f0c741fe830f1745af5e4",
-  "references/review-architecture.zh.md": "f6d4a35b78ef36d10824e4b945172bf4b80c462cfe391cb7401ad8fe2ea921a8",
+  "references/review-architecture.md": "07d30c5df9d4b8420695c833a4247cf1735c3d9726b383665d82da5816558305",
+  "references/review-architecture.zh.md": "a2d9fa5786e906752dc136d1093eef6cd22cb1fc307cde76cb433847df9c8341",
+  "references/review-contract.md": "b98bf0710eb63d59b9b1fb14d24e5f7d2e718faf33bc7f24cc48e21c1d54f2f1",
+  "references/review-contract.zh.md": "4f4b6c3f27bcf029b9aaa5488dc5cfe5fb4a7d592161dc95ce233f41ed984b8d",
   "references/show-changes.md": "0614123c2b79d391f66bef2f54b8738e98711c14f880229b43c7dc18396dc773",
-  "references/show-changes.zh.md": "4c91c8fdc0350a158318096ee0c1fa6d21cdad09a7dc802ed214e5abdb82ca1d"
+  "references/show-changes.zh.md": "4c91c8fdc0350a158318096ee0c1fa6d21cdad09a7dc802ed214e5abdb82ca1d",
+  "references/skill-compatibility.md": "b7c07548d9d5ebbc954664ce6886be3a3816215d05a8a1e2cbc8434426c276d9",
+  "references/skill-compatibility.zh.md": "a711e1f2a0a857fb666ce66eccfc1524d7ba9ef50ff50679d780b534d6689c50",
+  "review-skill/SKILL.md": "77effaab61d54870a724bfd2b3015c87a0aa180eab171b936e81bd6ec58722b7",
+  "review-skill/SKILL.zh.md": "ca153c0cb664edf0e5907a1ebf4b899ff0b51914bc3c243ac81c2235c3572fc1"
 }

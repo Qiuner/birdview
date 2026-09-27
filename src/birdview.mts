@@ -39,7 +39,19 @@ try {
     if (!html.includes('<html')) throw new Error('Renderer did not produce HTML.');
     console.log('OK: example validation through installed CLI, renderer dependencies and template assets. Agent activation must be checked in a new task.');
   } else {
-    const usage = 'Usage: birdview mode [auto|on-demand|off] | setup | uninstall [--project <root>] [--agent codex|claude-code|deepseek]';
+    const usage = 'Usage: birdview mode [auto|on-demand|off] | setup | uninstall [--project <root>] [--agent codex|claude-code|deepseek] | skills audit [--project <root>] [--language <zh|en>] [--write <file>] [--assessment <file>] [--write-markdown <file>]';
+    if (command === 'skills' && args.shift() === 'audit') {
+      const { auditSkills, readAssessment, renderAuditMarkdown } = await import('./skill-audit.mjs');
+      let project = process.cwd(), language: 'zh' | 'en' | undefined, write: string | undefined, assessment: string | undefined, markdown: string | undefined;
+      while (args.length) { const flag = args.shift(); const value = args.shift(); if (flag === '--project' && value) project = path.resolve(value); else if (flag === '--language' && (value === 'zh' || value === 'en')) language = value; else if (flag === '--write' && value) write = path.resolve(value); else if (flag === '--assessment' && value) assessment = path.resolve(value); else if (flag === '--write-markdown' && value) markdown = path.resolve(value); else throw new Error(usage); }
+      const report = auditSkills(project);
+      if (language) report.assessment.language = language;
+      if (assessment) { report.assessment = readAssessment(assessment, report, project); report.notes = report.assessment.status === 'reviewed' ? ['Inventory facts and semantic conclusions are separate.', 'Conclusions cover only cited skill pairs and stated scenarios; other combinations remain unassessed.'] : report.notes; }
+      if (write) { fs.mkdirSync(path.dirname(write), { recursive: true }); fs.writeFileSync(write, JSON.stringify(report, null, 2) + '\n'); }
+      if (markdown) { fs.mkdirSync(path.dirname(markdown), { recursive: true }); fs.writeFileSync(markdown, renderAuditMarkdown(report)); }
+      console.log(JSON.stringify(report, null, 2));
+      process.exit(0);
+    }
     if (!command || !['mode', 'setup', 'uninstall'].includes(command)) throw new Error(usage + '\n       birdview doctor');
     let mode: string | undefined;
     if (command === 'mode' && args[0] && !args[0].startsWith('--')) mode = args.shift();

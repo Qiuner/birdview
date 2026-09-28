@@ -11,7 +11,7 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 test('documentation checker detects drift and invalid records without overwriting them', t => {
   const fixture = fs.mkdtempSync(path.join(os.tmpdir(), 'birdview-docs-test-'));
   t.after(() => fs.rmSync(fixture, { recursive: true, force: true }));
-  for (const directory of ['scripts', 'references', 'docs', 'examples', '.github']) {
+  for (const directory of ['scripts', 'references', 'docs', 'examples', '.github', 'compatibility-audit']) {
     fs.mkdirSync(path.join(fixture, directory));
   }
   const checker = path.join(fixture, 'scripts/check-docs.mjs');
@@ -21,6 +21,9 @@ test('documentation checker detects drift and invalid records without overwritin
   const run = (...args: string[]) => spawnSync(process.execPath, [checker, ...args], { encoding: 'utf8', cwd: os.tmpdir() });
   assert.equal(run('--update').status, 0);
   assert.equal(run().status, 0);
+  fs.writeFileSync(path.join(fixture, 'compatibility-audit/SKILL.md'), '# Audit\n');
+  assert.match(run().stderr, /compatibility-audit\/SKILL.md: missing compatibility-audit\/SKILL.zh.md/);
+  fs.unlinkSync(path.join(fixture, 'compatibility-audit/SKILL.md'));
   const record = path.join(fixture, 'docs/i18n.json');
   const saved = fs.readFileSync(record, 'utf8');
   fs.appendFileSync(path.join(fixture, 'README.md'), '\nChanged\n');

@@ -83,12 +83,6 @@ For DeepSeek Harness and other hosts, use their skill selector or explicitly ask
 
 Check that the agent delivers a browser-readable page containing architecture and reviewed constraints, with source evidence and review gaps. If constraints cannot be reviewed, it should explain the missing coverage instead of inventing rules. Map-only requests stop after delivery; coding requests wait for your confirmation of the displayed plan. See the [installation guide](docs/installation.md) for complete Codex, Claude Code, and DeepSeek Harness setup and verification steps. See the [0.3.1 release notes](docs/release-notes-0.3.1.md) for this release's features and limitations.
 
-### Architecture review (development version)
-
-After installing the complete Birdview bundle, copy the repository review-skill directory to birdview-review under the same skill root. In Codex use $birdview-review or select it through /skills; in Claude Code use /birdview-review. Alternatively ask the installed Birdview skill to review a specific scope and generate comparison diagrams. Auto mode does not trigger this review.
-
-Review inspects source and applicable constraints, renders current/proposed diagrams, evidence, costs and verification, then waits for confirmation of a specific proposal. Supports standalone output and an architecture-page --review navigation entry; no automatic refactoring or implementation tracking. See the [workflow](references/review-architecture.md) and [contract](references/review-contract.md).
-
 ### Run the Demo from Source
 
 Developing Birdview or running the bundled demo requires Node.js 18 or newer:

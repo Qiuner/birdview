@@ -36,6 +36,7 @@ Browser implementation is maintained in `src/viewer/main.mts` with explicit impo
 - Each commit must contain one logically consistent set of changes. Stage and commit different kinds of changes separately.
 - Do not commit local state or temporary build artifacts; follow each directory's `.gitignore`. Distributed JavaScript generated from `src/` under `scripts/`, browser bundle `assets/viewer.js`, and generated exchange schemas under `schemas/` are intentional exceptions and must accompany changes to their TypeScript source. Do not commit `.test-build/`.
 - Before committing, inspect the staged diff and exclude unrelated files, generated artifacts, debug output and unexplained formatting.
+- When committing only part of a dirty workspace, validate the selected changes in a clean checkout without unrelated files. Run the checks above, including `check:build` and documentation validation, against that exact snapshot. A passing check in the original workspace does not validate the selected commit. After committing, run `check:install` before pushing. Register new generated modules in `build-artifacts.json`; generate documentation hashes from the same snapshot, never from unrelated unfinished work.
 
 ## Documentation maintenance
 

@@ -15,7 +15,7 @@ function collect(directory: string, recursive: boolean): void {
   }
 }
 collect('', false);
-for (const directory of ['references', 'docs', 'examples', '.github']) collect(directory, true);
+for (const directory of ['references', 'docs', 'examples', '.github', 'compatibility-audit']) collect(directory, true);
 const hashes: Record<string, string> = {};
 const errors: string[] = [];
 for (const file of files.sort()) {

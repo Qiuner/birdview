@@ -83,6 +83,12 @@ For DeepSeek Harness and other hosts, use their skill selector or explicitly ask
 
 Check that the agent delivers a browser-readable page containing architecture and reviewed constraints, with source evidence and review gaps. If constraints cannot be reviewed, it should explain the missing coverage instead of inventing rules. Map-only requests stop after delivery; coding requests wait for your confirmation of the displayed plan. See the [installation guide](docs/installation.md) for complete Codex, Claude Code, and DeepSeek Harness setup and verification steps. See the [0.3.1 release notes](docs/release-notes-0.3.1.md) for this release's features and limitations.
 
+### Architecture review (development version)
+
+After installing the complete Birdview bundle, copy the repository review-skill directory to birdview-review under the same skill root. In Codex use $birdview-review or select it through /skills; in Claude Code use /birdview-review. Alternatively ask the installed Birdview skill to review a specific scope and generate comparison diagrams. Auto mode does not trigger this review.
+
+Review inspects source and applicable constraints, renders current/proposed diagrams, evidence, costs and verification, then waits for confirmation of a specific proposal. Supports standalone output and an architecture-page --review navigation entry; no automatic refactoring or implementation tracking. See the [workflow](references/review-architecture.md) and [contract](references/review-contract.md).
+
 ### Run the Demo from Source
 
 Developing Birdview or running the bundled demo requires Node.js 18 or newer:
@@ -239,3 +245,20 @@ Released under the [MIT License](LICENSE). Copyright (c) 2026 Qiuner.
 Third-party notices are preserved in [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES).
 
 For release preparation, see the [release checklist](docs/releasing.md).
+
+### Skill compatibility audit
+
+Use `$birdview-compatibility` in Codex or `/birdview-compatibility` in Claude Code when you want to check whether installed skills can be activated together. The audit first inventories the effective skill roots, then reads the relevant skill bodies to compare trigger scope, invocation mode, write permissions and confirmation gates. It reports duplicate installs, trigger overlaps and scenario-specific compatibility conclusions with the evidence used for each conclusion.
+
+For a direct CLI run, write both machine-readable and human-readable results:
+
+```sh
+node <skill-root>/scripts/birdview.mjs skills audit \
+  --project <project-root> \
+  --language en \
+  --assessment <project-root>/.birdview/compatibility-assessment.json \
+  --write <project-root>/.birdview/compatibility-audit.json \
+  --write-markdown <project-root>/.birdview/compatibility-audit.md
+```
+
+Pass `--language zh` for a Chinese report. The command is read-only with respect to installed skills: it does not disable, rewrite or reorder another skill, and it does not generate an architecture diagram. Review the Markdown report before changing skill configuration.

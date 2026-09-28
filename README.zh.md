@@ -83,6 +83,12 @@ DeepSeek Harness 等宿主使用各自的技能选择器，或明确要求使用
 
 检查 Agent 是否交付了可在浏览器阅读的架构与已审查约束页面，包含来源证据及审查缺口。无法完成约束审查时，应说明缺失范围，不编造规则。仅看图的请求交付后结束；编码请求等待你确认已展示的方案。完整的 Codex、Claude Code、DeepSeek Harness 安装方法和验证步骤见[安装指南](docs/installation.zh.md)，本版功能与限制见 [0.3.1 发布说明](docs/release-notes-0.3.1.zh.md)。
 
+### 架构评审（开发版）
+
+安装完整 Birdview 后，将仓库 review-skill 目录复制到同一技能根目录下的 birdview-review。Codex 使用 $birdview-review 或在 /skills 中选择；Claude Code 使用 /birdview-review。也可直接要求已安装 Birdview“评审指定范围并生成对照图”。这不是自动模式触发项。
+
+评审读取源码与适用约束，生成当前／建议对照、证据、成本和验证计划，展示后等待你确认具体方案。支持独立页面和架构页 --review 导航入口；不自动重构、不追踪实施状态。见[评审流程](references/review-architecture.zh.md)和[契约](references/review-contract.zh.md)。
+
 ### 从源码运行演示
 
 开发或试用仓库内置演示需要 Node.js 18 或更高版本：
@@ -239,3 +245,20 @@ node scripts/check-docs.mjs
 第三方许可证声明保留在 [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES) 中。
 
 发版准备见[发布检查清单](docs/releasing.zh.md)。
+
+### 技能兼容性体检
+
+当你要检查已安装技能能否一起触发时，在 Codex 使用 `$birdview-compatibility`，在 Claude Code 使用 `/birdview-compatibility`。体检会先盘点生效的技能根目录，再读取相关技能正文，对比触发范围、调用模式、写权限和确认门槛，最后输出重复安装、触发重叠及按场景成立的兼容性结论，并列出每条结论使用的证据。
+
+直接运行 CLI 时，同时写出机器可读和人类可读结果：
+
+```sh
+node <skill-root>/scripts/birdview.mjs skills audit \
+  --project <project-root> \
+  --language zh \
+  --assessment <project-root>/.birdview/compatibility-assessment.json \
+  --write <project-root>/.birdview/compatibility-audit.json \
+  --write-markdown <project-root>/.birdview/compatibility-audit.md
+```
+
+与 Agent 的对话使用英文时传 `--language en`。该命令对已安装技能保持只读，不会禁用、改写或重排其他技能，也不会生成架构图。修改技能配置前，先阅读 Markdown 报告。

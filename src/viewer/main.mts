@@ -983,10 +983,14 @@ guideDialog.setAttribute('aria-labelledby', 'guide-title');
 guideDialog.setAttribute('aria-describedby', 'guide-copy');
 guideDialog.innerHTML = '<div id="guide-spot" aria-hidden="true"></div><section id="guide-card"><div class="guide-top"><span id="guide-count" aria-live="polite"></span><button id="guide-close">×</button></div><progress id="guide-progress"></progress><h2 id="guide-title"></h2><p id="guide-copy"></p><div class="guide-actions"><button id="guide-prev"></button><button id="guide-skip"></button><button id="guide-next" class="primary"></button></div></section>';
 document.body.append(guideDialog);
-type GuideStep = 'architecture' | 'activity' | 'compare' | 'details' | 'history';
-const guideSteps: GuideStep[] = activityEvents.length ? ['architecture', 'activity', 'compare', 'details', 'history'] : ['architecture', 'details'];
+type GuideStep = 'architecture' | 'constraints' | 'activity' | 'compare' | 'details' | 'history';
+const hasConstraintGuide = Boolean(DATA.constraintView || constraintRules.length);
+const guideSteps: GuideStep[] = activityEvents.length
+  ? ['architecture', ...(hasConstraintGuide ? ['constraints' as const] : []), 'activity', 'compare', 'details', 'history']
+  : ['architecture', ...(hasConstraintGuide ? ['constraints' as const] : []), 'details'];
 const guideCopy: Record<GuideStep, [string, string, string, string]> = {
   architecture: ['完整架构', '了解系统有哪些模块，以及它们如何连接。分组底色表示职责类别，不表示修改状态。', 'Architecture', 'See the system modules and their connections. Group backgrounds classify responsibilities, not change status.'],
+  constraints: ['查看约束', '约束视图把已审查的规则按主题和来源展开；颜色表示适用角色，不代表通过或失败。点击规则可阅读适用条件、解释、验证方式和原文依据。', 'Inspect constraints', 'The constraints view groups reviewed rules by topic and source. Colors show applicable roles, not pass or fail. Select a rule to read its condition, explanation, verification and source evidence.'],
   activity: ['本次修改', '亮起的是所选步骤的目标，灰色模块不是当前目标；验证阶段的亮起表示验证目标。终态不再高亮目标。', 'Current changes', 'Bright modules are targets of the selected step; gray modules are not. During verification, highlights mean verification targets. Terminal steps clear highlights.'],
   compare: ['同时对照', '完整架构与更改视图并排展示，选择、缩放和滚动保持联动。窄屏时上下排列。', 'Compare views', 'Compare architecture and changes with linked selection, zoom and scrolling. Narrow screens stack the views.'],
   details: ['查看依据', '点击模块可查看职责、文件归属与源码证据。悬浮模块可追踪直接连接，工具栏可切换全部关系或适配全图。', 'Inspect evidence', 'Select a module for responsibilities, file ownership and source evidence. Hover to trace direct connections; use the toolbar for all relations or fit to view.'],
@@ -996,13 +1000,14 @@ let guideIndex = 0;
 interface GuideSaved {
   mode: ViewMode; index: number; selected: string | undefined; inspector: boolean; zoom: number; fitting: boolean; disclosure: boolean;
   focus: Element | null; x: number; y: number; panes: [HTMLElement, number, number][];
-  constraints: {open: boolean; selected: string | undefined; filter: string};
+  constraints: {open: boolean; selected: string | undefined; filter: string}; projectView: 'architecture' | 'constraints';
 }
 let guideSaved: GuideSaved | undefined;
 let guideTarget: HTMLElement | undefined;
 let guideFrame = 0;
 const guideViewState: Record<GuideStep, {mode: ViewMode; inspector: boolean; history: boolean}> = {
   architecture: { mode: 'architecture', inspector: false, history: false },
+  constraints: { mode: 'architecture', inspector: false, history: false },
   activity: { mode: 'activity', inspector: false, history: false },
   compare: { mode: 'compare', inspector: false, history: false },
   details: { mode: 'architecture', inspector: true, history: false },
@@ -1057,6 +1062,10 @@ function showGuideStep(animate = false) {
   const saved = required(guideSaved);
   const step = required(guideSteps[guideIndex]);
   const state = guideViewState[step];
+  if (DATA.constraintView) {
+    const viewButton = element(query(`#project-views button:nth-child(${step === 'constraints' ? 2 : 1})`), HTMLButtonElement);
+    viewButton.click();
+  }
   hoveredModuleId = undefined;
   setInspector(state.inspector);
   activityMode = state.mode;
@@ -1070,7 +1079,8 @@ function showGuideStep(animate = false) {
   updateFlow();
   updateZoom();
   if (step === 'details') select(map.modules.find(module => module.id === saved.selected) || required(map.modules[0]));
-  guideTarget = step === 'details' ? inspector : step === 'history' ? activityPanel : step === 'compare' ? $('activity-mode') : step === 'activity' ? viewport : activityEvents.length ? query('[data-view="architecture"]') : viewport;
+  guideTarget = step === 'constraints' ? (query('#project-views') || query('#show-constraints'))
+    : step === 'details' ? inspector : step === 'history' ? activityPanel : step === 'compare' ? $('activity-mode') : step === 'activity' ? viewport : activityEvents.length ? query('[data-view="architecture"]') : viewport;
   guideTarget.scrollIntoView({ block: 'nearest', behavior: 'instant' });
   guideLabels();
   positionGuide();
@@ -1093,7 +1103,7 @@ function dismissGuideInvite() {
 function startGuide() {
   if (guideDialog.open) return;
   dismissGuideInvite();
-  guideSaved = { mode: activityMode, index: activityIndex, selected: selectedModuleId, inspector: workspace.classList.contains('inspector-open'), zoom, fitting, disclosure: $('activity-disclosure').open, focus: document.activeElement, x: scrollX, y: scrollY, constraints: {open: constraintPanelOpen, selected: selectedConstraintId, filter: constraintFilter}, panes: [...mapPanes.querySelectorAll<HTMLElement>('.map-scroll')].map(el => [el, el.scrollLeft, el.scrollTop]) };
+  guideSaved = { mode: activityMode, index: activityIndex, selected: selectedModuleId, inspector: workspace.classList.contains('inspector-open'), zoom, fitting, disclosure: $('activity-disclosure').open, focus: document.activeElement, x: scrollX, y: scrollY, constraints: {open: constraintPanelOpen, selected: selectedConstraintId, filter: constraintFilter}, projectView: new URLSearchParams(location.hash.slice(1)).get('view') === 'constraints' ? 'constraints' : 'architecture', panes: [...mapPanes.querySelectorAll<HTMLElement>('.map-scroll')].map(el => [el, el.scrollLeft, el.scrollTop]) };
   guideIndex = 0;
 
   constraintPanelOpen = false;
@@ -1106,6 +1116,7 @@ function finishGuide() {
   guideAnimation = undefined;
   guideDialog.close();
   const saved = required(guideSaved);
+  if (DATA.constraintView) element(query(`#project-views button:nth-child(${saved.projectView === 'constraints' ? 2 : 1})`), HTMLButtonElement).click();
   activityMode = saved.mode;
   activityIndex = saved.index;
   constraintPanelOpen = saved.constraints.open;

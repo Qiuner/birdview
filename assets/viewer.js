@@ -1857,9 +1857,11 @@ ${localized2(check, "summary")}`);
   guideDialog.setAttribute("aria-describedby", "guide-copy");
   guideDialog.innerHTML = '<div id="guide-spot" aria-hidden="true"></div><section id="guide-card"><div class="guide-top"><span id="guide-count" aria-live="polite"></span><button id="guide-close">\xD7</button></div><progress id="guide-progress"></progress><h2 id="guide-title"></h2><p id="guide-copy"></p><div class="guide-actions"><button id="guide-prev"></button><button id="guide-skip"></button><button id="guide-next" class="primary"></button></div></section>';
   document.body.append(guideDialog);
-  var guideSteps = activityEvents.length ? ["architecture", "activity", "compare", "details", "history"] : ["architecture", "details"];
+  var hasConstraintGuide = Boolean(DATA.constraintView || constraintRules.length);
+  var guideSteps = activityEvents.length ? ["architecture", ...hasConstraintGuide ? ["constraints"] : [], "activity", "compare", "details", "history"] : ["architecture", ...hasConstraintGuide ? ["constraints"] : [], "details"];
   var guideCopy = {
     architecture: ["\u5B8C\u6574\u67B6\u6784", "\u4E86\u89E3\u7CFB\u7EDF\u6709\u54EA\u4E9B\u6A21\u5757\uFF0C\u4EE5\u53CA\u5B83\u4EEC\u5982\u4F55\u8FDE\u63A5\u3002\u5206\u7EC4\u5E95\u8272\u8868\u793A\u804C\u8D23\u7C7B\u522B\uFF0C\u4E0D\u8868\u793A\u4FEE\u6539\u72B6\u6001\u3002", "Architecture", "See the system modules and their connections. Group backgrounds classify responsibilities, not change status."],
+    constraints: ["\u67E5\u770B\u7EA6\u675F", "\u7EA6\u675F\u89C6\u56FE\u628A\u5DF2\u5BA1\u67E5\u7684\u89C4\u5219\u6309\u4E3B\u9898\u548C\u6765\u6E90\u5C55\u5F00\uFF1B\u989C\u8272\u8868\u793A\u9002\u7528\u89D2\u8272\uFF0C\u4E0D\u4EE3\u8868\u901A\u8FC7\u6216\u5931\u8D25\u3002\u70B9\u51FB\u89C4\u5219\u53EF\u9605\u8BFB\u9002\u7528\u6761\u4EF6\u3001\u89E3\u91CA\u3001\u9A8C\u8BC1\u65B9\u5F0F\u548C\u539F\u6587\u4F9D\u636E\u3002", "Inspect constraints", "The constraints view groups reviewed rules by topic and source. Colors show applicable roles, not pass or fail. Select a rule to read its condition, explanation, verification and source evidence."],
     activity: ["\u672C\u6B21\u4FEE\u6539", "\u4EAE\u8D77\u7684\u662F\u6240\u9009\u6B65\u9AA4\u7684\u76EE\u6807\uFF0C\u7070\u8272\u6A21\u5757\u4E0D\u662F\u5F53\u524D\u76EE\u6807\uFF1B\u9A8C\u8BC1\u9636\u6BB5\u7684\u4EAE\u8D77\u8868\u793A\u9A8C\u8BC1\u76EE\u6807\u3002\u7EC8\u6001\u4E0D\u518D\u9AD8\u4EAE\u76EE\u6807\u3002", "Current changes", "Bright modules are targets of the selected step; gray modules are not. During verification, highlights mean verification targets. Terminal steps clear highlights."],
     compare: ["\u540C\u65F6\u5BF9\u7167", "\u5B8C\u6574\u67B6\u6784\u4E0E\u66F4\u6539\u89C6\u56FE\u5E76\u6392\u5C55\u793A\uFF0C\u9009\u62E9\u3001\u7F29\u653E\u548C\u6EDA\u52A8\u4FDD\u6301\u8054\u52A8\u3002\u7A84\u5C4F\u65F6\u4E0A\u4E0B\u6392\u5217\u3002", "Compare views", "Compare architecture and changes with linked selection, zoom and scrolling. Narrow screens stack the views."],
     details: ["\u67E5\u770B\u4F9D\u636E", "\u70B9\u51FB\u6A21\u5757\u53EF\u67E5\u770B\u804C\u8D23\u3001\u6587\u4EF6\u5F52\u5C5E\u4E0E\u6E90\u7801\u8BC1\u636E\u3002\u60AC\u6D6E\u6A21\u5757\u53EF\u8FFD\u8E2A\u76F4\u63A5\u8FDE\u63A5\uFF0C\u5DE5\u5177\u680F\u53EF\u5207\u6362\u5168\u90E8\u5173\u7CFB\u6216\u9002\u914D\u5168\u56FE\u3002", "Inspect evidence", "Select a module for responsibilities, file ownership and source evidence. Hover to trace direct connections; use the toolbar for all relations or fit to view."],
@@ -1871,6 +1873,7 @@ ${localized2(check, "summary")}`);
   var guideFrame = 0;
   var guideViewState = {
     architecture: { mode: "architecture", inspector: false, history: false },
+    constraints: { mode: "architecture", inspector: false, history: false },
     activity: { mode: "activity", inspector: false, history: false },
     compare: { mode: "compare", inspector: false, history: false },
     details: { mode: "architecture", inspector: true, history: false },
@@ -1930,6 +1933,10 @@ ${localized2(check, "summary")}`);
     const saved = required(guideSaved);
     const step = required(guideSteps[guideIndex]);
     const state = guideViewState[step];
+    if (DATA.constraintView) {
+      const viewButton = element(query(`#project-views button:nth-child(${step === "constraints" ? 2 : 1})`), HTMLButtonElement);
+      viewButton.click();
+    }
     hoveredModuleId = void 0;
     setInspector(state.inspector);
     activityMode = state.mode;
@@ -1943,7 +1950,7 @@ ${localized2(check, "summary")}`);
     updateFlow();
     updateZoom();
     if (step === "details") select(map.modules.find((module) => module.id === saved.selected) || required(map.modules[0]));
-    guideTarget = step === "details" ? inspector : step === "history" ? activityPanel : step === "compare" ? $("activity-mode") : step === "activity" ? viewport : activityEvents.length ? query('[data-view="architecture"]') : viewport;
+    guideTarget = step === "constraints" ? query("#project-views") || query("#show-constraints") : step === "details" ? inspector : step === "history" ? activityPanel : step === "compare" ? $("activity-mode") : step === "activity" ? viewport : activityEvents.length ? query('[data-view="architecture"]') : viewport;
     guideTarget.scrollIntoView({ block: "nearest", behavior: "instant" });
     guideLabels();
     positionGuide();
@@ -1969,7 +1976,7 @@ ${localized2(check, "summary")}`);
   function startGuide() {
     if (guideDialog.open) return;
     dismissGuideInvite();
-    guideSaved = { mode: activityMode, index: activityIndex, selected: selectedModuleId, inspector: workspace.classList.contains("inspector-open"), zoom, fitting, disclosure: $("activity-disclosure").open, focus: document.activeElement, x: scrollX, y: scrollY, constraints: { open: constraintPanelOpen, selected: selectedConstraintId, filter: constraintFilter }, panes: [...mapPanes.querySelectorAll(".map-scroll")].map((el) => [el, el.scrollLeft, el.scrollTop]) };
+    guideSaved = { mode: activityMode, index: activityIndex, selected: selectedModuleId, inspector: workspace.classList.contains("inspector-open"), zoom, fitting, disclosure: $("activity-disclosure").open, focus: document.activeElement, x: scrollX, y: scrollY, constraints: { open: constraintPanelOpen, selected: selectedConstraintId, filter: constraintFilter }, projectView: new URLSearchParams(location.hash.slice(1)).get("view") === "constraints" ? "constraints" : "architecture", panes: [...mapPanes.querySelectorAll(".map-scroll")].map((el) => [el, el.scrollLeft, el.scrollTop]) };
     guideIndex = 0;
     constraintPanelOpen = false;
     guideDialog.showModal();
@@ -1981,6 +1988,7 @@ ${localized2(check, "summary")}`);
     guideAnimation = void 0;
     guideDialog.close();
     const saved = required(guideSaved);
+    if (DATA.constraintView) element(query(`#project-views button:nth-child(${saved.projectView === "constraints" ? 2 : 1})`), HTMLButtonElement).click();
     activityMode = saved.mode;
     activityIndex = saved.index;
     constraintPanelOpen = saved.constraints.open;

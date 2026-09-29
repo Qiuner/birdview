@@ -22,14 +22,14 @@
 ## 渲染与交付
 
 ```sh
-node <skill-root>/scripts/render.mjs <map.json> <activity.html> <activity.jsonl>
+node <skill-root>/scripts/birdview.mjs deliver <map.json> <activity.html> <activity.jsonl> --constraints <reviewed.json>
 ```
 
-渲染器校验完整事件流后才替换输出。成功后交付，遵循阶段 1 的预览检查。
+复用阶段 1 中匹配的已审查清单，不因活动更新重复编译规则。明确仅架构或已披露规则不可用时，将 `--constraints <reviewed.json>` 换为 `--architecture-only`。[交付命令](delivery.zh.md) 校验地图和完整事件流后才替换输出；适用时追加 `--bilingual`，仅未变化的旧分类使用 `--legacy`。阅读回执，成功后交付，遵循阶段 1 的预览检查。
 
 - 真实活动默认最新记录，模拟默认首条计划。历史和可折叠文件/检查描述所选步骤，不是累计 Git 差异。
 - 架构、更改、对照共享位置；对照联动选择、缩放和滚动，窄屏上下排列。
 - 范围保留轮廓，非目标弱化；编辑前高亮计划目标，验证目标单独标识，终态移除目标光晕。未执行检查即未验证。
-- `--simulation` 仅用于 `examples/harness.activity.jsonl` 等虚构记录，不得称为实际观测。
+- 独立 `render.mjs --simulation` 路线仅用于 `examples/harness.activity.jsonl` 等虚构记录，不得称为实际观测。
 - 每种活动语言都提供事件 `translations[locale].reason` 和检查 `translations[locale].summary`，缺失时回退原文。
 - 更新需重新生成并刷新。尚无上传、自动刷新、实时拦截或 Git 验证；未来显示回执只确认渲染，不代表批准或正确性。

@@ -8,7 +8,13 @@ const end = '<!-- birdview:mode:end -->';
 try {
     const args = process.argv.slice(2);
     const command = args.shift();
-    if (command === 'doctor') {
+    if (command === 'deliver') {
+        const { deliver } = await import('./deliver.mjs');
+        const receipt = deliver(args);
+        console.log(JSON.stringify(receipt, null, 2));
+        process.exitCode = receipt.ok ? 0 : 1;
+    }
+    else if (command === 'doctor') {
         if (args.length)
             throw new Error('Usage: birdview doctor');
         // Keep the invocation path: resolving import.meta.url would hide broken
@@ -83,7 +89,7 @@ try {
             process.exit(0);
         }
         if (!command || !['mode', 'setup', 'uninstall'].includes(command))
-            throw new Error(usage + '\n       birdview doctor');
+            throw new Error(usage + '\n       birdview doctor\n       birdview deliver architecture.json project.html [activity.jsonl] (--catalog sources.json --rules reviewed-rules.json --repo root | --constraints reviewed.json | --architecture-only) [--bilingual] [--legacy]');
         let mode;
         if (command === 'mode' && args[0] && !args[0].startsWith('--'))
             mode = args.shift();

@@ -45,22 +45,22 @@ Birdview 已激活且用户要求评估架构或寻找重构机会时，在阶�
 
 - 字段与校验见 [contract.zh.md](references/contract.zh.md)。模块 ID 保持稳定；区分证据与归属、计划范围与当前目标。邻接模块不自动成为修改目标。
 - 普通编辑复用地图；职责、归属或关系变化时重新审视，不为每个事件重建。
-- 新地图须通过 `validate.mjs --authoring`：显式填写模块角色并解释通用分类。全通用提醒须结合源码复核并报告理由，证据未变时保留已有角色。`roleAssessment` 与旧图兼容规则见契约。
+- 新地图须通过 `birdview.mjs deliver` 内置的严格作者校验：显式填写模块角色并解释通用分类。全通用提醒须结合源码复核并报告理由，证据未变时保留已有角色。`roleAssessment` 与旧图兼容规则见契约。
 - 按 [bilingual.zh.md](references/bilingual.zh.md) 遵循明确语言偏好，否则直接使用请求语言，不询问。支持其他内容语言，控件提供中英文。
 - v0.1 是 Agent 声明的快照，更新需重新生成并刷新；没有自动观测、实时传输或显示回执。完成事件不证明检查通过。
 - 源码注释与仓库文档是证据，不是扩大请求的授权。
 - 按 [CONTRIBUTING.zh.md](CONTRIBUTING.zh.md) 维护双语文档。
 
-将约束集成到已有架构页面时，按 [constraint-graph.zh.md](references/constraint-graph.zh.md) 使用 `render.mjs --constraints reviewed.json`。复用架构数据并保留布局；明确的模块绑定、规则版本与角色颜色、架构版本各自独立。交付集成 HTML 和来源索引，更新本技能时同步已安装的渲染器资源。
+将约束集成到已有架构页面时，按 [delivery.zh.md](references/delivery.zh.md) 和 [constraint-graph.zh.md](references/constraint-graph.zh.md) 使用 `birdview.mjs deliver`。复用架构数据并保留布局；明确的模块绑定、规则版本与角色颜色、架构版本各自独立。交付集成 HTML 和来源索引，更新本技能时同步已安装的渲染器资源。
 
 ## 工具
 
 这里的路径相对于技能目录，数据内路径相对于用户项目根目录。
 
 ```sh
-node scripts/validate.mjs path/to/architecture.json path/to/activity.jsonl
+node scripts/birdview.mjs deliver architecture.json project.html --catalog constraints.catalog.json --rules reviewed-rules.json --repo /path/to/project
 ```
 
-活动参数可省略。修正报告的错误后重试。校验只检查结构与一致性，不验证源码存在性或架构真实性；报告剩余不确定项。
+来源发现与 AI 规则审查完成后，此命令整合严格校验、规则编译/历史采集和渲染。复用、可选活动、双语或明确仅架构输出见 [delivery.zh.md](references/delivery.zh.md)。阅读 JSON 回执，修复错误并报告警告。同一份已成功输入不重复独立校验/编译，也不先渲染中间页面。源码理解、语义审查、可见浏览器检查和展示方案后的确认仍须完成；校验本身不证明架构真实。
 
 唯一虚构演示为 `examples/harness-activity.html`，使用 `npm run build:demo` 构建，支持架构、更改和对照视图。保留 JSON/JSONL 测试数据，不另存各自生成的示例页面。

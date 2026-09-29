@@ -22,14 +22,14 @@ One active task per session; sequences start at 1 and stay contiguous. After a t
 ## Render and deliver
 
 ```sh
-node <skill-root>/scripts/render.mjs <map.json> <activity.html> <activity.jsonl>
+node <skill-root>/scripts/birdview.mjs deliver <map.json> <activity.html> <activity.jsonl> --constraints <reviewed.json>
 ```
 
-The renderer validates the full stream before replacing output. Deliver only after success; follow Stage 1's preview checks.
+Reuse the matching reviewed catalog from Stage 1; do not repeat rule compilation for an activity update. For explicit architecture-only output or disclosed unavailable rules, replace `--constraints <reviewed.json>` with `--architecture-only`. The [delivery command](delivery.md) validates the map and full stream before replacing output; add `--bilingual` when applicable and use `--legacy` only for unchanged legacy classifications. Read its receipt and deliver only after success; follow Stage 1's preview checks.
 
 - Real activity opens at the latest record; simulation at the first plan. History and collapsible files/checks describe the selected step, not cumulative Git changes.
 - Architecture/changes/comparison share positions; comparison links selection, zoom and scrolling and stacks on narrow screens.
 - Scope stays outlined; non-targets dim. Planned targets highlight before edits, verification targets are labelled separately, and terminal events remove target glow. No executed checks means unverified.
-- Use `--simulation` only for fictional records such as `examples/harness.activity.jsonl`, never as observed work.
+- Use the separate `render.mjs --simulation` route only for fictional records such as `examples/harness.activity.jsonl`, never as observed work.
 - For each supported activity language, supply event `translations[locale].reason` and check `translations[locale].summary`; absent translations fall back to originals.
 - Updates need regeneration and refresh. No upload, auto-refresh, live interception or Git verification exists; a future display receipt would confirm rendering, not approval or correctness.

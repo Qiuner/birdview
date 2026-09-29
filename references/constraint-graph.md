@@ -8,10 +8,9 @@ Use this route for a standalone constraint graph, a repository-wide inventory or
 
 ```sh
 node scripts/discover-constraints.mjs /path/to/repository /output/constraints.catalog.json "Project name"
-node scripts/render-constraints.mjs /output/constraints.catalog.json /output/sources.html --sources
-node scripts/compile-constraint-rules.mjs /output/constraints.catalog.json /output/reviewed-rules.json /output/constraints.reviewed.json
-node scripts/render-constraints.mjs /output/constraints.reviewed.json /output/constraints.html
 ```
+
+Next read the collected sources and author the reviewed selection below. Integrated delivery uses `birdview.mjs deliver` after that review; do not generate source-only or standalone rule pages as intermediate steps. `render-constraints.mjs catalog.json sources.html --sources` remains an optional source-inspection aid.
 
 The collector reads committed HEAD without modifying the repository. It enumerates tracked AGENTS.md, CLAUDE.md, GEMINI.md, SKILL.md, root CONTRIBUTING.md, GitHub Copilot instructions and Cursor rules, then follows local Markdown links and quoted Markdown paths recursively. It preserves source text, heading hierarchy, line ranges and file history. It excludes recognized fixtures, archives and duplicate Chinese translations, retaining reasons. References indicate discovery, not authority or automatic activation. A skill is conditional on its task; a directory instruction applies only under the host's inheritance rules. Implemented decision notes remain reference evidence, not automatically current rules.
 
@@ -48,7 +47,7 @@ Line numbers here are illustrative: inspect the target snapshot. Supported appli
 
 ## History and verification
 
-Keep three identities separate: stable `rule.id` (the displayed R-number is only a presentation ordinal), rule source-history `vN`, and the full project snapshot commit. To populate history, pass the repository as the fourth compiler argument:
+Keep three identities separate: stable `rule.id` (the displayed R-number is only a presentation ordinal), rule source-history `vN`, and the full project snapshot commit. Integrated delivery collects history with `deliver --catalog ... --rules ... --repo ...`; do not compile again separately. For a standalone constraint-only page, pass the repository as the fourth compiler argument:
 
 ```sh
 node scripts/compile-constraint-rules.mjs catalog.json reviewed-rules.json versioned.json /path/to/repository
@@ -71,10 +70,10 @@ Keep the architecture page's original horizontal toolbar and canvas layout. The 
 When the user requests a combined page, reuse the existing architecture JSON and render both views:
 
 ```sh
-node scripts/render.mjs architecture.json project.html --constraints versioned.json
+node scripts/birdview.mjs deliver architecture.json project.html --constraints versioned.json
 ```
 
-Activity JSONL and `--repo` remain optional. The CLI writes `project.html` and the auxiliary `project.sources.html`; distribute both together. Without `--constraints`, existing architecture output is unchanged. The renderer API accepts `constraintCatalog` and optional `constraintSourceHref` in its third argument; API callers generate the auxiliary source index themselves.
+Activity JSONL and `--repo` remain optional. The command writes `project.html` and the auxiliary `project.sources.html`; distribute both together. If the selection has not been compiled yet, use `--catalog catalog.json --rules reviewed-rules.json --repo /path/to/repository` instead of `--constraints`; it also writes `project.constraints.json`. See [delivery.md](delivery.md) for strict authoring, bilingual/legacy checks, warnings and failure handling. The existing renderer API still accepts `constraintCatalog` and optional `constraintSourceHref` in its third argument; API callers generate the auxiliary source index themselves.
 
 Both views retain their canvas state when switching. The header keeps the project name, language controls and shared light/dark theme; role colors keep the same meaning. Architecture revision and constraint snapshot are distinct identities. Controls use the host language; authored rules and source quotations stay in their original language. The source index is an auxiliary page, not a second main graph.
 

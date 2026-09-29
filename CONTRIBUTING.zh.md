@@ -8,12 +8,10 @@
 
 ```sh
 npm ci
-npm run typecheck
-npm run check:build
-npm test
-npm run validate:examples
-node scripts/check-docs.mjs
+npm run check:pr
 ```
+
+`check:pr` 是统一的 PR 提交前清单，会依次运行类型检查、生成产物检查、单元测试、浏览器测试、已跟踪演示重新生成与差异检查、示例校验和文档检查。编辑后、提交前运行它；修改查看器时不能省略浏览器或演示页检查。
 
 修改查看器或渲染器时运行 `npm run build:demo` 并审阅已跟踪演示文件的 diff。验证中英文、桌面和移动端及受影响的交互。运行 `npx playwright install chromium` 和 `npm run test:browser` 进行真实浏览器检查，详见[发布检查清单](docs/releasing.zh.md)。行为改动应补充回归覆盖，在 PR 模板中说明实际运行的检查和剩余限制。不要包含私有源码数据或凭据。
 

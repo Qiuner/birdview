@@ -8,12 +8,10 @@ Use Node.js 18 or newer. Fork the repository on GitHub, work in a focused branch
 
 ```sh
 npm ci
-npm run typecheck
-npm run check:build
-npm test
-npm run validate:examples
-node scripts/check-docs.mjs
+npm run check:pr
 ```
+
+`check:pr` is the single pre-PR checklist. It runs type checking, generated-artifact checks, unit tests, browser tests, tracked-demo regeneration and diff verification, example validation, and documentation checks. Run it after editing and before committing; do not skip browser or generated-demo checks for viewer changes.
 
 For viewer or renderer changes, run `npm run build:demo` and review the tracked demo diff. Verify Chinese and English, desktop and mobile, and the affected interactions. Run `npx playwright install chromium` and `npm run test:browser` for real-browser checks; see the [release checklist](docs/releasing.md). Add regression coverage for behavior changes; describe checks actually run and any remaining limitations in the PR template. Never include private source data or credentials.
 

@@ -19,6 +19,7 @@
     "test": "npm run build:tests -- --unit",
     "build:tests": "tsc --project tsconfig.test.json && node scripts/build-tests.mjs",
     "test:browser": "npm run build:tests -- --browser",
+    "check:pr": "node scripts/check-pr.mjs",
     "check:install": "node scripts/check-install.mjs"
   },
   "devDependencies": {

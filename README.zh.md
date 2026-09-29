@@ -157,7 +157,7 @@ node scripts/render.mjs .birdview/architecture.json .birdview/activity.html .bir
 要加入已经收集并审查的约束清单：
 
 ```sh
-node scripts/render.mjs .birdview/architecture.json .birdview/project.html --constraints .birdview/constraints.reviewed.json
+node scripts/birdview.mjs deliver .birdview/architecture.json .birdview/project.html --constraints .birdview/constraints.reviewed.json
 ```
 
 CLI 生成集成页面及相邻的 `project.sources.html` 辅助导出。来源发现、规则审查和独立约束图生成见[约束流程](references/constraint-graph.zh.md)。

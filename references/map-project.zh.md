@@ -21,7 +21,7 @@
 
 字段、角色、归属、证据、状态与布局遵循[契约](contract.zh.md)。模块角色依据已检查职责，不明确用 `generic`，不为配色轮换；角色独立于归属与分组。外部服务仅用于解释真实关系，不分配本地文件归属。无充分支持的结论标为 `uncertain` 并列出具体问题；`supported` 表示检查过证据，不是静态证明。
 
-新地图须逐模块显式分类，渲染前运行 `node <skill-root>/scripts/validate.mjs <map.json> --authoring`（中英双语交付追加 `--bilingual`）。通用模块按契约填写 `roleAssessment`，说明现有类别为何不适用或缺少什么证据；证据不足须标待确认并给出具体问题。不得为省事批量使用 generic。全通用提醒须逐模块结合源码复核并报告原因，不为过检查编造不同角色。复用时保留已有分类，仅在新证据支持时更改；降为通用须说明理由并遵循版本规则。更新旧地图时核对新增/变化模块的分类，不强制迁移未变化的旧字段。
+新地图须逐模块显式分类，`birdview.mjs deliver` 会在渲染前执行严格作者校验（中英双语交付追加 `--bilingual`）。独立 `validate.mjs --authoring` 仅用于提前诊断，不作为重复交付步骤。通用模块按契约填写 `roleAssessment`，说明现有类别为何不适用或缺少什么证据；证据不足须标待确认并给出具体问题。不得为省事批量使用 generic。全通用提醒须逐模块结合源码复核并报告原因，不为过检查编造不同角色。复用时保留已有分类，仅在新证据支持时更改；降为通用须说明理由并遵循版本规则。更新旧地图时核对新增/变化模块的分类，不强制迁移未变化的旧字段（见 [delivery.zh.md](delivery.zh.md) 中受限的 `--legacy` 用法）。
 
 有向关系填写具体标签、证据、状态、`kind` 与 `visibility`。核心执行、必要结果/工具反馈、基础依赖和必需审批放在 `overview`；恢复、重试和诊断可放在 `detail`，除非它们就是主题。不明确时用 `overview`。检查孤立概览模块是否缺少连接，保留真正的辅助模块及隐藏关系计数。所有关系保留在数据中；类型/可见性不代表修改范围，也不能仅为减少拥挤而改变。
 
@@ -48,15 +48,15 @@
 
 ## 渲染与检查
 
-默认“使用 Birdview”交付时，最终渲染前完成[约束流程](constraint-graph.zh.md)：检查生效本地指令、收集已提交来源、撰写并审查 `reviewed-rules.json`，再携带仓库参数编译，采集规则历史到 `.birdview/constraints.reviewed.json`。工作区指令差异须明确列为限制。按[约束契约](constraints.zh.md)在 `map.constraintDiscovery` 记录实际已检查和未检查路径；扫描不等于语义审查。不得复制演示规则。有效时复用匹配的已审查清单。明确范围与快照，检查来源后才能关联模块。来源清单、审查选择与编译后的清单一起保存，供其他 AI 继续审查。审查未完成时报告边界，不得声称完整交付。没有已审查规则时，交付架构与发现结果并注明限制；规则渲染器有意拒绝空清单或未经审查的清单。
+默认“使用 Birdview”交付时，最终渲染前完成[约束流程](constraint-graph.zh.md)：检查生效本地指令、收集已提交来源，再撰写并审查 `reviewed-rules.json`。下述交付命令负责编译并采集规则历史到 `.birdview/architecture.constraints.json`。工作区指令差异须明确列为限制。按[约束契约](constraints.zh.md)在 `map.constraintDiscovery` 记录实际已检查和未检查路径；扫描不等于语义审查。不得复制演示规则。有效时复用匹配的已审查清单。明确范围与快照，检查来源后才能关联模块。来源清单、审查选择与编译后的清单一起保存，供其他 AI 继续审查。审查未完成时报告边界，不得声称完整交付。没有已审查规则时，交付架构与发现结果并注明限制；规则渲染器有意拒绝空清单或未经审查的清单。
 
 使用自带渲染器；从用户项目运行时用绝对路径，`<skill-root>` 是包含 SKILL.md 的目录。按实际约定位置替换路径：
 
 ```sh
-node <skill-root>/scripts/render.mjs <project-root>/.birdview/architecture.json <project-root>/.birdview/architecture.html --constraints <project-root>/.birdview/constraints.reviewed.json
+node <skill-root>/scripts/birdview.mjs deliver <project-root>/.birdview/architecture.json <project-root>/.birdview/architecture.html --catalog <project-root>/.birdview/constraints.catalog.json --rules <project-root>/.birdview/reviewed-rules.json --repo <project-root>
 ```
 
-仅在明确的仅架构请求或已披露规则清单不可用时省略 `--constraints`。检查最终页面具有架构/约束切换、来源依据、规则版本标识和来源索引链接，并一起交付 `.sources.html` 文件。架构检查面板只统计架构数据中的规则，不统计独立清单；缺少模块关联不等于项目没有规则。
+复用有效的编译清单时，将 `--catalog ... --rules ...` 换为 `--constraints <reviewed.json>`。仅在明确的仅架构请求或已披露规则清单不可用时改用 `--architecture-only`。阅读[交付回执](delivery.zh.md)中的警告和历史缺口；成功输入无需另行校验、编译或生成中间 HTML。检查最终集成页面具有架构/约束切换、来源依据、规则版本标识和来源索引链接，并一起交付 `.sources.html` 文件。架构检查面板只统计架构数据中的规则，不统计独立清单；缺少模块关联不等于项目没有规则。
 
 渲染器校验 JSON 后输出自包含 HTML，无需服务器/网络资源。不要手写替代查看器或用虚构演示充当项目地图。
 

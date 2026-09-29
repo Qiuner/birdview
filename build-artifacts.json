@@ -1,5 +1,7 @@
 [
   "scripts/skill-audit.mjs",
+  "scripts/deliver.mjs",
+  "scripts/check-pr.mjs",
   "assets/theme.js",
   "assets/constraint-canvas.js",
   "assets/viewer.js",

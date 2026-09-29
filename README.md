@@ -157,7 +157,7 @@ node scripts/render.mjs .birdview/architecture.json .birdview/activity.html .bir
 To include an already collected and reviewed constraint catalog:
 
 ```sh
-node scripts/render.mjs .birdview/architecture.json .birdview/project.html --constraints .birdview/constraints.reviewed.json
+node scripts/birdview.mjs deliver .birdview/architecture.json .birdview/project.html --constraints .birdview/constraints.reviewed.json
 ```
 
 The CLI writes the integrated page and a companion `project.sources.html` export. For source discovery, rule review and standalone constraint rendering, see the [constraint workflow](references/constraint-graph.md).

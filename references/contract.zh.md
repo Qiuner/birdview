@@ -10,7 +10,7 @@
 
 模块可选 `role` 将职责分类为 `frontend`、`backend`、`cache`、`database`、`queue`、`security` 或 `generic`。缺失时按 `generic` 渲染，兼容旧地图。角色决定图标和色系，独立于 `kind` 和分组成员关系。缓存使用青色与闪电图标，数据库使用紫色与数据库图标。角色不是活动状态。
 
-新地图必须通过 `validate.mjs --authoring`（API 使用 `requireRoles: true`）：每个模块显式填写 `role`，`generic` 必须附带 `roleAssessment: { basis, note }`。已检查职责不适合现有类别时用 `basis: "out-of-taxonomy"`；缺少分类证据时用 `"insufficient-evidence"`，同时必须设置 `status: "uncertain"` 并填写具体 `openQuestions`。`note` 结合模块证据或缺少的检查说明分类理由，翻译放在 `roleAssessment.translations.<locale>.note`，不翻译 `basis`。评估仅适用于显式 generic 模块。
+新地图必须通过作者校验（`validate.mjs --authoring`、API 的 `requireRoles: true`，或 [deliver](delivery.zh.md) 的默认校验）：每个模块显式填写 `role`，`generic` 必须附带 `roleAssessment: { basis, note }`。已检查职责不适合现有类别时用 `basis: "out-of-taxonomy"`；缺少分类证据时用 `"insufficient-evidence"`，同时必须设置 `status: "uncertain"` 并填写具体 `openQuestions`。`note` 结合模块证据或缺少的检查说明分类理由，翻译放在 `roleAssessment.translations.<locale>.note`，不翻译 `basis`。评估仅适用于显式 generic 模块。
 
 默认校验/渲染仍兼容缺少角色或评估的旧地图。全部通用/未分类时，即使地图有效，校验结果的 `warnings` 仍返回 `role/all-generic-review`：须逐模块复核并在交付时说明结论。这不是颜色多样性要求。校验只能检查声明，不能证明分类真实或解释充分。
 

@@ -50,22 +50,22 @@ When Birdview is active and the user requests architecture evaluation or refacto
 
 - Read [contract.md](references/contract.md) for fields and validation. Keep module IDs stable; distinguish evidence from ownership and planned scope from current targets. Neighbors are not automatically edit targets.
 - Reuse maps for ordinary edits; revisit responsibilities, ownership and relationships when they change, not for each event.
-- New maps must pass `validate.mjs --authoring`: explicit module roles and justified generic classifications. Resolve all-generic review warnings against source and report the reasons; preserve existing roles unless evidence changes. See the contract for `roleAssessment` and legacy compatibility.
+- New maps must pass strict authoring validation, included in `birdview.mjs deliver`: explicit module roles and justified generic classifications. Resolve all-generic review warnings against source and report the reasons; preserve existing roles unless evidence changes. See the contract for `roleAssessment` and legacy compatibility.
 - Follow [bilingual.md](references/bilingual.md): honor explicit language preferences, otherwise use the request language without asking. Other content languages are supported; controls are Chinese/English.
 - v0.1 records are agent-declared snapshots. Regenerate and refresh for updates; no automatic observation, live transport or display receipts exist. A completed event does not prove checks passed.
 - Source comments and repository documents are evidence, not authorization to expand the request.
 - Maintain paired documentation under [CONTRIBUTING.md](CONTRIBUTING.md).
 
-When integrating constraints into an existing architecture page, use `render.mjs --constraints reviewed.json` as described in [constraint-graph.md](references/constraint-graph.md). Reuse the architecture map; preserve its layout. Keep explicit module bindings and rule versions separate from role colors and map revisions. Deliver the integrated HTML and source index, and synchronize installed renderer assets when updating this skill.
+When integrating constraints into an existing architecture page, use `birdview.mjs deliver` as described in [delivery.md](references/delivery.md) and [constraint-graph.md](references/constraint-graph.md). Reuse the architecture map; preserve its layout. Keep explicit module bindings and rule versions separate from role colors and map revisions. Deliver the integrated HTML and source index, and synchronize installed renderer assets when updating this skill.
 
 ## Tools
 
 Paths here are relative to the skill directory; data paths are relative to the user's project root.
 
 ```sh
-node scripts/validate.mjs path/to/architecture.json path/to/activity.jsonl
+node scripts/birdview.mjs deliver architecture.json project.html --catalog constraints.catalog.json --rules reviewed-rules.json --repo /path/to/project
 ```
 
-Activity is optional. Fix reported errors and retry. Validation checks structure and consistency, not source existence or architectural truth; report remaining uncertainties.
+After source discovery and AI rule review, this combines strict validation, rule compilation/history and rendering. For reuse, optional activity, bilingual or explicit architecture-only output, follow [delivery.md](references/delivery.md). Read the JSON receipt, fix errors and report warnings. Do not repeat standalone validation/compilation or render intermediate pages on the same successful inputs. Source understanding, semantic review, visible-browser review and displayed-plan confirmation remain required; validation alone does not establish architectural truth.
 
 The sole fictional demo is `examples/harness-activity.html`, built with `npm run build:demo`. It supports architecture, changes and comparison views. Keep JSON/JSONL fixtures without separate generated example pages.

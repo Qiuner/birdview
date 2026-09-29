@@ -18,9 +18,10 @@
 ## 校验与显示
 
 ```sh
-node <skill-root>/scripts/validate.mjs <map.json> --bilingual
-node <skill-root>/scripts/render.mjs <map.json> <architecture.html>
+node <skill-root>/scripts/birdview.mjs deliver <map.json> <architecture.html> --constraints <reviewed.json> --bilingual
 ```
+
+新审查的规则使用 [delivery.zh.md](delivery.zh.md) 中的编译路线；明确仅架构时，将 `--constraints <reviewed.json>` 换为 `--architecture-only`。命令已包含作者与双语校验。独立 `validate.mjs --bilingual` 仍可用于诊断，无需增加一次必跑交接。
 
 仅中英双语交付使用 `--bilingual`。单语言不加该参数；其他组合在结构校验后手动检查语言覆盖。严格检查验证架构文本覆盖与问题数量，不验证翻译准确性或活动翻译。通过前不声称中英完整覆盖；在浏览器检查两种语言的提示、详情和关系，另行核对活动覆盖。
 

@@ -2,16 +2,15 @@
 
 [English](constraint-graph.md)
 
-独立约束图或仓库级约束清单使用此流程。保留现有架构查看器。下述命令相对于已安装的技能目录，而不是目标仓库；需要 Node.js 和 Git。按照安装指南先在技能安装目录执行一次 `npm ci`；运行下述命令无需构建前端。
+独立约束图、仓库级约束清单或默认集成交付的约束部分使用此流程。保留现有架构查看器。下述命令相对于已安装的技能目录，而不是目标仓库；需要 Node.js 和 Git。按照安装指南先在技能安装目录执行一次 `npm ci`；运行下述命令无需构建前端。
 
 ## 发现声明范围
 
 ```sh
 node scripts/discover-constraints.mjs /path/to/repository /output/constraints.catalog.json "Project name"
-node scripts/render-constraints.mjs /output/constraints.catalog.json /output/sources.html --sources
-node scripts/compile-constraint-rules.mjs /output/constraints.catalog.json /output/reviewed-rules.json /output/constraints.reviewed.json
-node scripts/render-constraints.mjs /output/constraints.reviewed.json /output/constraints.html
 ```
+
+接着阅读采集来源，按下文编写已审查选择。集成交付在审查后使用 `birdview.mjs deliver`，不以来源页或独立规则页作为中间步骤。`render-constraints.mjs catalog.json sources.html --sources` 仍可按需辅助查看来源。
 
 采集器读取已提交的 HEAD，不修改仓库。枚举受 Git 跟踪的 AGENTS.md、CLAUDE.md、GEMINI.md、SKILL.md、根 CONTRIBUTING.md、GitHub Copilot 指令和 Cursor 规则，再递归跟进本地 Markdown 链接及反引号中的 Markdown 路径。保留原文、标题层级、行号和文件历史。排除可识别的夹具、归档及重复中文翻译并记录原因。引用表示发现路径，不代表权威或自动生效。技能按任务触发，目录指令按宿主继承规则适用。已实施的决策笔记仍是引用证据，不自动视为当前规则。
 
@@ -48,7 +47,7 @@ node scripts/render-constraints.mjs /output/constraints.reviewed.json /output/co
 
 ## 历史与验证
 
-区分三个标识：稳定的 `rule.id`（显示的 R 编号只是展示序号）、规则原文历史 `vN`、完整仓库快照提交号。需要生成历史时，将仓库作为编译器第四个参数：
+区分三个标识：稳定的 `rule.id`（显示的 R 编号只是展示序号）、规则原文历史 `vN`、完整仓库快照提交号。集成交付通过 `deliver --catalog ... --rules ... --repo ...` 采集历史，不再单独重复编译。仅约束的独立页面使用下述命令，将仓库作为编译器第四个参数：
 
 ```sh
 node scripts/compile-constraint-rules.mjs catalog.json reviewed-rules.json versioned.json /path/to/repository
@@ -71,10 +70,10 @@ node scripts/render-constraints.mjs versioned.json constraints.html
 用户要求组合页面时，复用现有架构 JSON，一次渲染两个视图：
 
 ```sh
-node scripts/render.mjs architecture.json project.html --constraints versioned.json
+node scripts/birdview.mjs deliver architecture.json project.html --constraints versioned.json
 ```
 
-活动 JSONL 与 `--repo` 仍为可选参数。CLI 写出 `project.html` 和辅助索引 `project.sources.html`，两者一起交付。不传 `--constraints` 时原架构输出不变。渲染器 API 的第三个参数支持 `constraintCatalog` 和可选的 `constraintSourceHref`；API 调用方自行生成辅助来源索引。
+活动 JSONL 与 `--repo` 仍为可选参数。命令写出 `project.html` 和辅助索引 `project.sources.html`，两者一起交付。选择文件尚未编译时，用 `--catalog catalog.json --rules reviewed-rules.json --repo /path/to/repository` 替代 `--constraints`，另会输出 `project.constraints.json`。严格作者校验、双语/旧图检查、警告和失败处理见 [delivery.zh.md](delivery.zh.md)。现有渲染器 API 的第三个参数仍支持 `constraintCatalog` 和可选的 `constraintSourceHref`；API 调用方自行生成辅助来源索引。
 
 切换视图时保留各自画布状态。页头保留项目名称、语言控件和共享明暗主题；角色颜色含义一致。架构版本与约束快照是不同标识。控件使用主页面语言；已撰写规则和来源引文保持原语言。来源索引是辅助页面，不是第二张主图。
 

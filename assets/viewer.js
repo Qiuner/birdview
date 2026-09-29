@@ -1857,7 +1857,7 @@ ${localized2(check, "summary")}`);
   guideDialog.setAttribute("aria-describedby", "guide-copy");
   guideDialog.innerHTML = '<div id="guide-spot" aria-hidden="true"></div><section id="guide-card"><div class="guide-top"><span id="guide-count" aria-live="polite"></span><button id="guide-close">\xD7</button></div><progress id="guide-progress"></progress><h2 id="guide-title"></h2><p id="guide-copy"></p><div class="guide-actions"><button id="guide-prev"></button><button id="guide-skip"></button><button id="guide-next" class="primary"></button></div></section>';
   document.body.append(guideDialog);
-  var hasConstraintGuide = Boolean(DATA.constraintView || constraintRules.length);
+  var hasConstraintGuide = Boolean(DATA.constraintView);
   var guideSteps = activityEvents.length ? ["architecture", ...hasConstraintGuide ? ["constraints"] : [], "activity", "compare", "details", "history"] : ["architecture", ...hasConstraintGuide ? ["constraints"] : [], "details"];
   var guideCopy = {
     architecture: ["\u5B8C\u6574\u67B6\u6784", "\u4E86\u89E3\u7CFB\u7EDF\u6709\u54EA\u4E9B\u6A21\u5757\uFF0C\u4EE5\u53CA\u5B83\u4EEC\u5982\u4F55\u8FDE\u63A5\u3002\u5206\u7EC4\u5E95\u8272\u8868\u793A\u804C\u8D23\u7C7B\u522B\uFF0C\u4E0D\u8868\u793A\u4FEE\u6539\u72B6\u6001\u3002", "Architecture", "See the system modules and their connections. Group backgrounds classify responsibilities, not change status."],

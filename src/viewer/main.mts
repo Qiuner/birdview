@@ -984,7 +984,7 @@ guideDialog.setAttribute('aria-describedby', 'guide-copy');
 guideDialog.innerHTML = '<div id="guide-spot" aria-hidden="true"></div><section id="guide-card"><div class="guide-top"><span id="guide-count" aria-live="polite"></span><button id="guide-close">×</button></div><progress id="guide-progress"></progress><h2 id="guide-title"></h2><p id="guide-copy"></p><div class="guide-actions"><button id="guide-prev"></button><button id="guide-skip"></button><button id="guide-next" class="primary"></button></div></section>';
 document.body.append(guideDialog);
 type GuideStep = 'architecture' | 'constraints' | 'activity' | 'compare' | 'details' | 'history';
-const hasConstraintGuide = Boolean(DATA.constraintView || constraintRules.length);
+const hasConstraintGuide = Boolean(DATA.constraintView);
 const guideSteps: GuideStep[] = activityEvents.length
   ? ['architecture', ...(hasConstraintGuide ? ['constraints' as const] : []), 'activity', 'compare', 'details', 'history']
   : ['architecture', ...(hasConstraintGuide ? ['constraints' as const] : []), 'details'];

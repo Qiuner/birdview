@@ -57,6 +57,8 @@ Birdview puts those answers on one page:
 
 The integrated HTML offers architecture and constraint views, light and dark themes, module details, and Chinese and English controls. Inputs are checked for structure and consistency before rendering. The CLI also exports an auxiliary source index. Collected documents are not automatically effective rules, and displaying a rule does not prove the implementation satisfies it.
 
+For upstream collaborative specification authoring and system contracts that establish baseline boundaries before running Birdview maps, see [MySpec](https://myspec.dev?utm_source=github&utm_medium=referral&utm_campaign=qiuner-birdview).
+
 ## Quick Start
 
 Install it with the third-party `skills` CLI:

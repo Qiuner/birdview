@@ -119,16 +119,29 @@ function routeArchitecture(relationships, positions) {
       if (a[0] === b[0] && b[0] === c[0] || a[1] === b[1] && b[1] === c[1]) points.splice(i, 1);
     }
     for (let i = 1; i < points.length; i++) used.push([requiredAt(points, i - 1), requiredAt(points, i)]);
-    let d = `M ${requiredAt(points, 0).join(" ")}`;
-    for (let i = 1; i < points.length - 1; i++) {
-      const a = requiredAt(points, i - 1), b = requiredAt(points, i), c = requiredAt(points, i + 1);
+    const drawPoints = [...points];
+    for (let i = 1; i < drawPoints.length - 2; ) {
+      const a = requiredAt(drawPoints, i - 1), b = requiredAt(drawPoints, i);
+      const c = requiredAt(drawPoints, i + 1), d2 = requiredAt(drawPoints, i + 2);
+      const shortJog = Math.hypot(c[0] - b[0], c[1] - b[1]) <= 12;
+      const outerHorizontal = a[1] === b[1] && c[1] === d2[1];
+      const outerVertical = a[0] === b[0] && c[0] === d2[0];
+      const minX = Math.min(a[0], d2[0]), maxX = Math.max(a[0], d2[0]);
+      const minY = Math.min(a[1], d2[1]), maxY = Math.max(a[1], d2[1]);
+      const shortSpanClear = !obstacles.some((r) => r.x < maxX && r.x + r.w > minX && r.y < maxY && r.y + r.h > minY);
+      if (shortJog && shortSpanClear && (outerHorizontal || outerVertical)) drawPoints.splice(i, 2);
+      else i++;
+    }
+    let d = `M ${requiredAt(drawPoints, 0).join(" ")}`;
+    for (let i = 1; i < drawPoints.length - 1; i++) {
+      const a = requiredAt(drawPoints, i - 1), b = requiredAt(drawPoints, i), c = requiredAt(drawPoints, i + 1);
       const before = Math.hypot(b[0] - a[0], b[1] - a[1]), after = Math.hypot(c[0] - b[0], c[1] - b[1]);
       const radius = Math.min(6, before / 2, after / 2);
       const entry = b.map((v, k) => v + (requiredAt(a, k) - v) * radius / before);
       const exit = b.map((v, k) => v + (requiredAt(c, k) - v) * radius / after);
       d += ` L ${entry.join(" ")} Q ${b.join(" ")} ${exit.join(" ")}`;
     }
-    d += ` L ${requiredAt(points, points.length - 1).join(" ")}`;
+    d += ` L ${requiredAt(drawPoints, drawPoints.length - 1).join(" ")}`;
     return { points, d };
   });
 }

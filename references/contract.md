@@ -36,7 +36,7 @@ The group heading displays the localized role alongside its name.
 Optional `language` (such as `zh`, `en`, `ja`, `fr` or `pt-BR`) identifies the base
 text language using a common language tag. Optional
 `translations` on project, modules, relationships and evidence objects contains
-localized text only. See `bilingual.md` for authoring and completeness validation.
+localized text only. See [bilingual.md](bilingual.md) for authoring and completeness validation.
 Absent translations fall back to base fields; identities and layout are shared.
 
 `schemaVersion` versions the file format. `mapId` identifies a map and `revision`

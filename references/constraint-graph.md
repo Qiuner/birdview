@@ -79,7 +79,7 @@ Both views retain their canvas state when switching. The header keeps the projec
 
 Project names must match. Optional module links require an explicit catalog `architectureBinding: {mapId, mapRevision, sourceRevision}` matching the map and the full catalog commit, plus `modules: ["module-id"]` on reviewed rules. Carry this binding in the reviewed selection when compiling; recompilation discards old catalog bindings. Inspect source evidence before authoring links. The renderer rejects stale bindings and unknown module IDs. Role similarity is never a module link. Without bindings, the full graph still works and module details say no links are recorded. With bindings, the module button opens only linked rules and their ancestors; “Show all rules” restores the full graph. Changing this filter initializes a new constraint layout; switching architecture/constraints alone preserves it. Versions and verification evidence remain unchanged by filtering.
 
-Check both views, switching without state loss, theme changes, Chinese/English navigation, narrow screens, module filters and the source-index link. Keep the original architecture layout intact. A conceptual demo map must still be described as conceptual even if its accompanying constraints come from real source history.
+Check both views, switching without state loss, theme changes, Chinese/English navigation, narrow screens, module filters and in-page source reading. Keep the original architecture layout intact. A conceptual demo map must still be described as conceptual even if its accompanying constraints come from real source history.
 
 ## Render and deliver
 

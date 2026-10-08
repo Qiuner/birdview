@@ -55,7 +55,7 @@ Birdview puts those answers on one page:
 - **Comparison:** the full architecture and current change scope on the same layout.
 - **Verification:** the checks the agent actually ran and whether they passed.
 
-The integrated HTML offers architecture and constraint views, light and dark themes, module details, and Chinese and English controls. Inputs are checked for structure and consistency before rendering. The CLI also exports an auxiliary source index. Collected documents are not automatically effective rules, and displaying a rule does not prove the implementation satisfies it.
+The integrated HTML offers architecture and constraint views, light and dark themes, module details, and Chinese and English controls. Inputs are checked for structure and consistency before rendering. Collected sources are readable inside the constraint view under By directory. Collected documents are not automatically effective rules, and displaying a rule does not prove the implementation satisfies it.
 
 ## Quick Start
 
@@ -160,7 +160,7 @@ To include an already collected and reviewed constraint catalog:
 node scripts/birdview.mjs deliver .birdview/architecture.json .birdview/project.html --constraints .birdview/constraints.reviewed.json
 ```
 
-The CLI writes the integrated page and a companion `project.sources.html` export. For source discovery, rule review and standalone constraint rendering, see the [constraint workflow](references/constraint-graph.md).
+The CLI writes one integrated page with in-page source reading. For source discovery, rule review and standalone constraint rendering, see the [constraint workflow](references/constraint-graph.md).
 
 Add `--bilingual` when both Chinese and English content must be validated. Use `--simulation` only to mark fictional demo activity.
 

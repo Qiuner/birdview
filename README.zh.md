@@ -55,7 +55,7 @@ Birdview 把这些信息放进同一个页面：
 - **前后对照：** 在同一布局中比较完整架构与本次改动范围。
 - **验证记录：** Agent 实际运行了哪些检查，以及检查是否通过。
 
-集成 HTML 提供架构和约束视图、明暗主题、模块详情及中英文界面。渲染前会检查输入的结构与一致性，CLI 还会导出辅助来源索引。收集到文档不代表其中所有规则自动生效，展示规则也不代表实现已经满足它。
+集成 HTML 提供架构和约束视图、明暗主题、模块详情及中英文界面。渲染前会检查输入的结构与一致性，已采集来源可在约束视图的“按目录”中阅读。收集到文档不代表其中所有规则自动生效，展示规则也不代表实现已经满足它。
 
 ## 快速开始
 
@@ -160,7 +160,7 @@ node scripts/render.mjs .birdview/architecture.json .birdview/activity.html .bir
 node scripts/birdview.mjs deliver .birdview/architecture.json .birdview/project.html --constraints .birdview/constraints.reviewed.json
 ```
 
-CLI 生成集成页面及相邻的 `project.sources.html` 辅助导出。来源发现、规则审查和独立约束图生成见[约束流程](references/constraint-graph.zh.md)。
+CLI 生成一个集成页面，来源原文在页内阅读。来源发现、规则审查和独立约束图生成见[约束流程](references/constraint-graph.zh.md)。
 
 需要同时校验中英文内容时添加 `--bilingual`。`--simulation` 只用于明确标记虚构的演示数据。
 

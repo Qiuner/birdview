@@ -1070,11 +1070,11 @@ SOFTWARE.
       grouping.ariaLabel = text("\u7EA6\u675F\u5206\u7EC4\u65B9\u5F0F", "Constraint grouping");
       grouping.options[0].textContent = text("\u6309\u4E3B\u9898", "By topic");
       grouping.options[1].textContent = text("\u6309\u76EE\u5F55", "By directory");
-      title.textContent = filterIds ? text("\u6A21\u5757\u5173\u8054\u89C4\u5219", "Module-linked rules") : data.mode === "sources" ? text("\u6765\u6E90\u7D22\u5F15 \xB7 \u672A\u5B8C\u6210\u8BED\u4E49\u5BA1\u67E5", "Source index \xB7 Semantic review pending") : text("\u5DF2\u6574\u7406\u89C4\u5219", "Reviewed rules") + ` \xB7 ${data.nodes.filter((node) => node.kind === "rule").length}`;
+      title.textContent = filterIds ? text("\u6A21\u5757\u5173\u8054\u89C4\u5219", "Module-linked rules") : text("\u5DF2\u6574\u7406\u89C4\u5219", "Reviewed rules") + ` \xB7 ${data.nodes.filter((node) => node.kind === "rule").length}`;
       title.title = data.scope;
       toggleDirectory.title = toggleDirectory.ariaLabel = text("\u89C4\u5219\u76EE\u5F55", "Rule directory");
       toggleDirectory.setAttribute("aria-expanded", String(directoryOpen));
-      directoryTitle.textContent = data.mode === "sources" ? text("\u6765\u6E90\u76EE\u5F55", "Sources") : text("\u89C4\u5219\u76EE\u5F55", "Rules");
+      directoryTitle.textContent = text("\u89C4\u5219\u76EE\u5F55", "Rules");
       directory.setAttribute("aria-label", directoryTitle.textContent);
       directoryClose.ariaLabel = text("\u6536\u8D77\u76EE\u5F55", "Close directory");
       search.placeholder = text("\u641C\u7D22\u89C4\u5219\u4E0E\u539F\u6587", "Search rules and sources");

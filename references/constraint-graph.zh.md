@@ -10,7 +10,7 @@
 node scripts/discover-constraints.mjs /path/to/repository /output/constraints.catalog.json "Project name"
 ```
 
-接着阅读采集来源，按下文编写已审查选择。集成交付在审查后使用 `birdview.mjs deliver`，不以来源页或独立规则页作为中间步骤。`render-constraints.mjs catalog.json sources.html --sources` 仍可按需辅助查看来源。
+接着阅读采集来源，按下文编写已审查选择。集成交付在审查后使用 `birdview.mjs deliver`，不以来源页或独立规则页作为中间步骤。规则审查前可检查采集清单 JSON。
 
 采集器读取已提交的 HEAD，不修改仓库。枚举受 Git 跟踪的 AGENTS.md、CLAUDE.md、GEMINI.md、SKILL.md、根 CONTRIBUTING.md、GitHub Copilot 指令和 Cursor 规则，再递归跟进本地 Markdown 链接及反引号中的 Markdown 路径。保留原文、标题层级、行号和文件历史。排除可识别的夹具、归档及重复中文翻译并记录原因。引用表示发现路径，不代表权威或自动生效。技能按任务触发，目录指令按宿主继承规则适用。已实施的决策笔记仍是引用证据，不自动视为当前规则。
 
@@ -73,9 +73,9 @@ node scripts/render-constraints.mjs versioned.json constraints.html
 node scripts/birdview.mjs deliver architecture.json project.html --constraints versioned.json
 ```
 
-活动 JSONL 与 `--repo` 仍为可选参数。命令写出 `project.html` 和辅助索引 `project.sources.html`，两者一起交付。选择文件尚未编译时，用 `--catalog catalog.json --rules reviewed-rules.json --repo /path/to/repository` 替代 `--constraints`，另会输出 `project.constraints.json`。严格作者校验、双语/旧图检查、警告和失败处理见 [delivery.zh.md](delivery.zh.md)。现有渲染器 API 的第三个参数仍支持 `constraintCatalog` 和可选的 `constraintSourceHref`；API 调用方自行生成辅助来源索引。
+活动 JSONL 与 `--repo` 仍为可选参数。命令写出 `project.html`，其中“按目录”支持页内来源阅读。选择文件尚未编译时，用 `--catalog catalog.json --rules reviewed-rules.json --repo /path/to/repository` 替代 `--constraints`，另会输出 `project.constraints.json`。严格作者校验、双语/旧图检查、警告和失败处理见 [delivery.zh.md](delivery.zh.md)。渲染器 API 的第三个参数支持 `constraintCatalog`；返回的 HTML 内已包含来源阅读。
 
-切换视图时保留各自画布状态。页头保留项目名称、语言控件和共享明暗主题；角色颜色含义一致。架构版本与约束快照是不同标识。控件使用主页面语言；已撰写规则和来源引文保持原语言。来源索引是辅助页面，不是第二张主图。
+切换视图时保留各自画布状态。页头保留项目名称、语言控件和共享明暗主题；角色颜色含义一致。架构版本与约束快照是不同标识。控件使用主页面语言；已撰写规则和来源引文保持原语言。来源依据在约束视图内阅读。
 
 项目名称必须匹配。可选模块关联要求清单明确声明 `architectureBinding: {mapId, mapRevision, sourceRevision}`，与架构和清单的完整提交一致，并在已审查规则上声明 `modules: ["module-id"]`。编译时在审查选择中携带此绑定；重新编译会丢弃旧清单绑定。撰写关联前检查源码依据。渲染器拒绝过期绑定和未知模块 ID。角色相似绝不是模块关联。没有绑定时，完整图仍可用，模块详情提示尚未记录关联；有绑定时，模块按钮仅打开关联规则及其祖先，“查看全部规则”恢复完整图。改变筛选会初始化新的约束布局；仅切换架构/约束会保留布局。筛选不改变版本与核验证据。
 
@@ -85,7 +85,7 @@ node scripts/birdview.mjs deliver architecture.json project.html --constraints v
 
 `render-constraints.mjs` 接受 `birdview.constraint-catalog/v1`，默认生成**规则图**：项目 → 类别 → 可选的人类语义主题 → 规则。六种类别为 `lifecycle`、`interfaces`、`configuration`、`security`、`testing`、`delivery`。主题使用编号和文字；颜色按架构角色统一：frontend 蓝、backend 青绿、cache 青、database 紫、queue 琥珀、security 玫瑰、generic 灰蓝。规则可填 targetRole；非通用角色必须给 roleReason 来源依据。跨角色或不明确时保持 generic，不根据主题名猜测角色。同角色分组沿用该色，混合分组为通用色。工具栏角色图例显示规则数量；卡片同时显示规则编号和角色文字。适用性和核验结果在详情独立显示，颜色不表达通过或失败。标题应简洁并表达可执行要求；卡片最多显示两行，悬停提示和阅读面板保留完整标题。通过主题分组控制每层阅读量，通常不超过八个子节点。文件时间/版本和采集数量不占规则卡片，不把成千上万个统一待定的来源节点作为主视图。
 
-渲染器使用 Birdview 自有 HTML 卡片、SVG 连线和子树布局，不依赖第三方图运行时。`constraint-canvas.js` 在独立和集成页面挂载同一组件；`constraint-page.html` 提供独立页面外壳；`constraint-canvas.css` 将样式限定在约束视图。`buildConstraintGraph()` 准备 `birdview.constraint-view/v1` 展示数据，不改变输入清单契约。详情先呈现适用条件、解释和验证计划，再展示来源依据与规则历史。文档按安全文本和基础标题、引文渲染，不执行任意 HTML 或嵌入图表。全部已采集来源（包括未审查的 skills 与引用文档）显示在“按目录”；双击来源文件阅读原文和审查状态。覆盖情况仍在“阅读范围”。工具栏不再跳转其他页面。CLI 为兼容保留相邻 `.sources.html` 导出；`--sources` 仅渲染此辅助导出。
+渲染器使用 Birdview 自有 HTML 卡片、SVG 连线和子树布局，不依赖第三方图运行时。`constraint-canvas.js` 在独立和集成页面挂载同一组件；`constraint-page.html` 提供独立页面外壳；`constraint-canvas.css` 将样式限定在约束视图。`buildConstraintGraph()` 准备 `birdview.constraint-view/v1` 展示数据，不改变输入清单契约。详情先呈现适用条件、解释和验证计划，再展示来源依据与规则历史。文档按安全文本和基础标题、引文渲染，不执行任意 HTML 或嵌入图表。全部已采集来源（包括未审查的 skills 与引用文档）显示在“按目录”；双击来源文件阅读原文和审查状态。覆盖情况仍在“阅读范围”。工具栏不再跳转其他页面。独立来源索引导出和 `--sources` 选项已移除。已有本地导出不会自动删除。
 
 打开 HTML，在桌面和窄屏检查展开、原文阅读、长内容及覆盖披露。报告实际采集数量、未解决/排除范围、语义审查状态和执行过的测试。来源采集完整不等于生效规则审查完整，分别说明。页面离线只读，不是实时监控或执行拦截器。生成的原生页面包含 Birdview 许可；保留实际分发依赖的许可证。
 

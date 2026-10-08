@@ -4,12 +4,12 @@ import { fileURLToPath } from 'node:url';
 import { isMainModule } from './main-module.mjs';
 import { validate } from './validate.mjs';
 import { inspectConstraintFreshness } from './constraint-freshness.mjs';
-import { buildConstraintGraph, renderConstraintCatalog } from './render-constraints.mjs';
+import { buildConstraintGraph } from './render-constraints.mjs';
 // Source: src/render.mts. Regenerate scripts/render.mjs with npm run build.
 const root = fileURLToPath(new URL('../', import.meta.url));
 const read = (file) => fs.readFileSync(path.join(root, file), 'utf8').replace(/\r\n?/g, '\n');
 const dataUrl = (file, type) => `data:${type};base64,${fs.readFileSync(path.join(root, file)).toString('base64')}`;
-export function renderArchitecture(map, events = [], { simulation = false, repository, constraintCatalog, constraintSourceHref } = {}) {
+export function renderArchitecture(map, events = [], { simulation = false, repository, constraintCatalog } = {}) {
     const result = validate(map, events);
     if (!result.ok)
         throw new Error(JSON.stringify(result.errors));
@@ -28,7 +28,7 @@ export function renderArchitecture(map, events = [], { simulation = false, repos
             if (rule.modules !== undefined && (!binding || rule.modules.some(id => !architecture.modules.some(module => module.id === id))))
                 throw new Error(`Invalid module binding: ${rule.id}`);
         }
-        constraintView = { graph: buildConstraintGraph(constraintCatalog, constraintSourceHref ? { sourceHref: constraintSourceHref } : {}), snapshot: constraintCatalog.project.revision,
+        constraintView = { graph: buildConstraintGraph(constraintCatalog), snapshot: constraintCatalog.project.revision,
             scope: constraintCatalog.ruleReview.scope, rules: constraintCatalog.rules.map(({ id, modules = [] }) => ({ id, modules })) };
     }
     const data = JSON.stringify({ map: architecture, icons, events, simulation, brandLogo, constraintFreshness, constraintView }).replace(/</g, '\\u003c');
@@ -81,13 +81,10 @@ if (isMainModule(import.meta.url)) {
             }
         }) : [];
         const map = JSON.parse(fs.readFileSync(input, 'utf8'));
-        const sourceOutput = output.replace(/\.html$/i, '.sources.html');
-        const options = { simulation, ...(repository ? { repository } : {}), ...(constraintCatalog ? { constraintCatalog, constraintSourceHref: encodeURIComponent(path.basename(sourceOutput)) } : {}) };
+        const options = { simulation, ...(repository ? { repository } : {}), ...(constraintCatalog ? { constraintCatalog } : {}) };
         const html = renderArchitecture(map, events, options);
         fs.mkdirSync(path.dirname(path.resolve(output)), { recursive: true });
         fs.writeFileSync(output, html);
-        if (constraintCatalog)
-            fs.writeFileSync(sourceOutput, renderConstraintCatalog(constraintCatalog, undefined, { view: 'sources' }));
         console.log(path.resolve(output));
     }
     catch (error) {

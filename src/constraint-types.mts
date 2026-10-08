@@ -124,11 +124,10 @@ export interface ConstraintGraphNode {
 }
 export interface ConstraintGraph {
   schema: 'birdview.constraint-view/v1';
-  mode: 'rules' | 'sources';
+  mode: 'rules';
   title: string;
   revision: string;
   scope: string;
-  sourceHref?: string;
   roles?: Record<ConstraintRole, { name: string; dark: string[]; light: string[] }>;
   nodes: ConstraintGraphNode[];
   directoryNodes?: ConstraintGraphNode[];

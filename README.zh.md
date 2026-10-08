@@ -52,7 +52,7 @@ Birdview 把这些信息放进同一个页面：
 - **阅读范围：** 哪些来源已收集、已审查，哪些仍不确定或尚未检查。
 - **本次改动：** Agent 声明要触碰哪些模块和文件，目前进行到哪一步。
 - **判断依据：** 每个架构结论对应哪些源码文件或代码位置。
-- **前后对照：** 在同一布局中比较完整架构与本次改动范围。
+- **范围外影响：** 与计划范围直接相连、但没有声明的模块，以及连接它们的关系。
 - **验证记录：** Agent 实际运行了哪些检查，以及检查是否通过。
 
 集成 HTML 提供架构和约束视图、明暗主题、模块详情及中英文界面。渲染前会检查输入的结构与一致性，已采集来源可在约束视图的“按目录”中阅读。收集到文档不代表其中所有规则自动生效，展示规则也不代表实现已经满足它。
@@ -94,7 +94,14 @@ npm test
 npm run build:demo
 ```
 
-在浏览器中打开 [`examples/harness-activity.html`](examples/harness-activity.html)。演示中的项目和 Agent 活动均为模拟数据。
+仓库里有 2 个示例页面，都是离线 HTML，不用运行任何命令，直接在浏览器中打开即可：
+
+| 页面 | 视图 | 数据 |
+|---|---|---|
+| [`examples/harness-activity.html`](examples/harness-activity.html) | 完整架构、更改视图（含范围外影响） | 模拟的项目和 Agent 活动 |
+| [`examples/review.html`](examples/review.html) | 架构评审：现状图上的红笔批注、誊清稿和源码剪报 | 由 AI 实际评审 Birdview 自身生成：页面交付与规则校验两个候选，引用已与源码逐行核对 |
+
+约束视图需要先整理约束目录，仓库里暂时没有可直接打开的示例。
 
 ## 交流与反馈
 
@@ -110,7 +117,7 @@ npm run build:demo
 
 ## 查看器指引
 
-打开集成页面后，可以切换**架构**和**约束**。架构包含项目全图；提供活动记录时，还可查看更改和并排对照。点击模块查看职责、所属文件和源码依据，活动历史记录 Agent 声明的计划、进度与检查结果。
+打开集成页面后，可以切换**架构**、**约束**和**评审**（后两者在生成了对应数据时出现）。架构包含项目全图；提供活动记录时，还可查看带「范围外影响」的更改视图。点击模块查看职责、所属文件和源码依据，活动历史记录 Agent 声明的计划、进度与检查结果。
 
 约束页可**按主题**理解规则，或**按目录**追溯文件。双击节点查看具体解释或来源原文，通过**阅读范围**检查审查覆盖和缺口。角色颜色与架构图一致，不代表合规结果。
 
@@ -233,12 +240,32 @@ node scripts/check-docs.mjs
 
 字段语义和约束见 [Birdview 契约](references/contract.zh.md)。文档修改必须遵循 [CONTRIBUTING.zh.md](CONTRIBUTING.zh.md) 中的双语规则。
 
+## Star 增长
+
+<p align="center">
+  <img src="docs/star-history.svg" alt="Birdview GitHub Star 增长曲线" width="100%">
+</p>
+
+> 图表基于 2026 年 10 月 8 日当前的 GitHub stargazer 列表生成。GitHub 后续可能清理异常 Star，公开记录见 [Issue #33](https://github.com/Qiuner/birdview/issues/33)。
+
 ## 许可证
 
 采用 [MIT 许可证](LICENSE)。Copyright (c) 2026 Qiuner。
 第三方许可证声明保留在 [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES) 中。
 
 发版准备见[发布检查清单](docs/releasing.zh.md)。
+
+### 架构评审
+
+说“优化这个项目的架构”或“评审模块边界”，即可请求架构评审流程。Birdview 先检查源码，展示当前/建议结构图、依据、收益、迁移成本及验证步骤。审阅展示的方案后，再授权实施。普通修复、局部重构、仅要求绘制现有架构，都不启动评审。
+
+独立入口位于 `review-skill/`。将它以 `birdview-review` 名称安装到完整 `birdview` 技能的同级目录；它依赖完整包中的参考文档和渲染器。只安装主技能不会同时安装这个独立入口。Codex 在技能选择器中选择 Birdview Review，或输入：
+
+```text
+$birdview-review 评审当前项目架构，展示优化方案，先不要改代码。
+```
+
+Claude Code 安装入口后使用 `/birdview-review`。主 Birdview 技能也能将架构优化请求转入同一流程。自然语言选择依赖宿主发现已安装技能，安装或更新后应在新任务中检查触发。这些是 Agent 技能调用，不是 `birdview` CLI 子命令。详见[评审流程](references/review-architecture.zh.md)。
 
 ### 技能兼容性体检
 

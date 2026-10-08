@@ -52,7 +52,7 @@ Birdview puts those answers on one page:
 - **Reading coverage:** which sources were collected and reviewed, and what remains uncertain or uninspected.
 - **Current change:** the modules and files the agent says it will touch, plus its current step.
 - **Source evidence:** the files or code locations behind each architectural claim.
-- **Comparison:** the full architecture and current change scope on the same layout.
+- **Outside-scope impact:** modules directly connected to the planned scope but not declared, with the relationships that connect them.
 - **Verification:** the checks the agent actually ran and whether they passed.
 
 The integrated HTML offers architecture and constraint views, light and dark themes, module details, and Chinese and English controls. Inputs are checked for structure and consistency before rendering. Collected sources are readable inside the constraint view under By directory. Collected documents are not automatically effective rules, and displaying a rule does not prove the implementation satisfies it.
@@ -94,7 +94,14 @@ npm test
 npm run build:demo
 ```
 
-Open [`examples/harness-activity.html`](examples/harness-activity.html) in a browser. The project and agent activity shown in the demo are simulated.
+The repository has 2 example pages. Both are offline HTML; open them directly in a browser without running anything:
+
+| Page | Views | Data |
+|---|---|---|
+| [`examples/harness-activity.html`](examples/harness-activity.html) | Architecture and Changes (with outside-scope impact) | Simulated project and agent activity |
+| [`examples/review.html`](examples/review.html) | Architecture review: red-pencil marks on the current drawing, the clean redraw and source clippings | An AI-generated review of Birdview itself: two candidates on page delivery and rule validation; quotes are checked line by line against the source |
+
+The constraint view needs a curated constraint catalog first, so there is no ready-to-open example for it yet.
 
 ## Community and Feedback
 
@@ -110,7 +117,7 @@ You can also [share feedback on GitHub](https://github.com/Qiuner/birdview/issue
 
 ## Viewer Guide
 
-On an integrated page, switch between **Architecture** and **Constraints**. Architecture includes the full map and, when activity is supplied, changes and side-by-side comparison. Select a module to inspect responsibilities, files and evidence. Activity history records the agent-declared plan, progress and checks.
+On an integrated page, switch between **Architecture**, **Constraints** and **Review** (the latter two appear when their data was rendered). Architecture includes the full map and, when activity is supplied, the changes view with an outside-scope impact layer. Select a module to inspect responsibilities, files and evidence. Activity history records the agent-declared plan, progress and checks.
 
 In Constraints, browse **by topic** to understand rules, or **by directory** to trace their files. Double-click a node to read its explanation or source text, and use **Coverage** to inspect the reviewed scope and gaps. Role colors match the architecture palette; they do not represent compliance.
 
@@ -233,12 +240,32 @@ Browser-level checks live in [`test/viewer.browser.mts`](test/viewer.browser.mts
 
 For the field semantics and invariants, read the [Birdview contract](references/contract.md). Documentation changes must follow the bilingual rules in [CONTRIBUTING.md](CONTRIBUTING.md).
 
+## Star History
+
+<p align="center">
+  <img src="docs/star-history.svg" alt="Birdview GitHub Star history" width="100%">
+</p>
+
+> Snapshot generated from the current GitHub stargazer list on October 8, 2026. GitHub may later remove anomalous stars; see [Issue #33](https://github.com/Qiuner/birdview/issues/33) for the public record.
+
 ## License
 
 Released under the [MIT License](LICENSE). Copyright (c) 2026 Qiuner.
 Third-party notices are preserved in [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES).
 
 For release preparation, see the [release checklist](docs/releasing.md).
+
+### Architecture review
+
+Ask “optimize this project's architecture” or “review the module boundaries” to start the architecture-review workflow. Birdview first inspects source and presents current/proposed diagrams, evidence, benefits, migration costs and verification steps. Review the displayed proposal before authorizing implementation. Ordinary bug fixes, local refactors and requests to draw the current architecture alone do not start a review.
+
+The dedicated entry lives in `review-skill/`. Install it as `birdview-review` alongside the complete `birdview` skill in the same skills directory; it depends on that bundle's references and renderer. Installing only the main skill does not install this separate entry. In Codex, select Birdview Review or enter:
+
+```text
+$birdview-review Review this project's architecture and show improvement proposals; do not edit code yet.
+```
+
+In Claude Code, use `/birdview-review` after installing the entry. The main Birdview skill can also route an architecture-improvement request to the same workflow. Natural-language selection depends on the host discovering the installed skill; start a new task after installation or updates to check activation. These are agent skill invocations, not `birdview` CLI subcommands. See the [review workflow](references/review-architecture.md).
 
 ### Skill compatibility audit
 

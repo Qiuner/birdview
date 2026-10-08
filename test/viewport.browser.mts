@@ -37,7 +37,38 @@ try {
     await page.locator('#close-details').click();
     assert.equal(await page.locator('aside').isVisible(), false);
   }
+  // Common desktop screens, from small laptops to 1440p monitors, must each get a readable
+  // map with the current change in view and a toolbar that fits.
+  const screens = [[1024, 768], [1280, 720], [1366, 768], [1440, 900], [1536, 864], [1680, 1050], [1920, 1080], [2560, 1440]] as const;
+  let previousRoot = 0;
+  for (const [width, height] of screens) {
+    await page.setViewportSize({ width, height });
+    await page.goto(pathToFileURL(file).href + '#lang=zh');
+    // Interface text scales with the screen inside fixed bounds and never shrinks on a larger one.
+    const root = await page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).fontSize));
+    assert.ok(root >= 14 && root <= 18 && root >= previousRoot, JSON.stringify({ width, height, root, previousRoot }));
+    previousRoot = root;
+    for (const mode of ['activity', 'architecture']) {
+      await page.locator(`[data-view="${mode}"]`).click();
+      const result = await page.evaluate(() => {
+        const frame = document.querySelector('.map-pane .map-scroll')?.getBoundingClientRect();
+        const heading = document.querySelector<HTMLElement>('.map-heading');
+        if (!frame || !heading) throw new Error('Missing map layout');
+        const inView = [...document.querySelectorAll('#map .activity-target')].every(node => {
+          const box = node.getBoundingClientRect();
+          return box.left >= frame.left - 1 && box.right <= frame.right + 1 && box.top >= frame.top - 1 && box.bottom <= frame.bottom + 1;
+        });
+        return { zoom: parseInt(document.getElementById('zoom-value')?.textContent ?? '0', 10), pageWidth: document.documentElement.scrollWidth, pageHeight: document.documentElement.scrollHeight, headingOverflow: heading.scrollWidth - heading.clientWidth, inView };
+      });
+      const label = JSON.stringify({ width, height, mode, ...result });
+      assert.ok(result.pageWidth <= width + 1 && result.pageHeight <= height + 1, label);
+      assert.ok(result.zoom >= 80, label);
+      assert.ok(result.headingOverflow <= 1, label);
+      assert.ok(result.inView, label);
+    }
+  }
   console.log('Viewport checks passed: desktop/tablet/mobile, all views, long evidence and expanded activity details.');
+  console.log(`Screen matrix passed: ${screens.map(([width, height]) => `${width}x${height}`).join(', ')} keep a readable map, the change in view and a fitting toolbar.`);
 } finally {
   await browser.close();
   fs.rmSync(dir, { recursive: true, force: true });

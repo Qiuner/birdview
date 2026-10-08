@@ -233,28 +233,51 @@ if (map.groups?.length) {
 $('map').style.width = `${width}px`;
 $('map').style.height = `${height}px`;
 let zoom = 1;
+// Automatic fitting never shrinks text below this scale; on screens too small to
+// show the whole map at it, the view centres on the change and the rest pans.
+// The fit button asks for the whole map instead (fitAll) and ignores the floor.
+const readableZoom = .8;
 let fitting = true;
+let fitAll = false;
+let floored = false;
 const viewport = query('.map-scroll');
 function updateZoom() {
   if (fitting) {
     const availableHeight = Math.max(180, Math.min(viewport.clientHeight - 40, window.innerHeight - viewport.getBoundingClientRect().top - 70));
     // Fit may enlarge small maps so large screens are used, but not past legible-text scale.
-    zoom = Math.min(1.5, viewport.clientWidth / width, availableHeight / height);
-  }
+    const whole = Math.min(1.5, viewport.clientWidth / width, availableHeight / height);
+    floored = !fitAll && whole < readableZoom;
+    zoom = floored ? readableZoom : whole;
+  } else floored = false;
   $('map').style.transform = `scale(${zoom})`;
   $('map-stage').style.width = `${width * zoom}px`;
   $('map-stage').style.height = `${height * zoom}px`;
   $('zoom-value').textContent = `${Math.round(zoom * 100)}%`;
   buttonById('zoom-in').disabled = zoom >= 2;
   buttonById('zoom-out').disabled = zoom <= .1;
-  $('fit').setAttribute('aria-pressed', String(fitting));
+  // Pressed means the whole map is on screen.
+  $('fit').setAttribute('aria-pressed', String(fitting && !floored));
+}
+// Scroll so the modules that matter now sit in the middle of a floored view.
+function focusChange() {
+  if (!fitting || !floored) return;
+  const event = activityMode === 'architecture' ? undefined : activityEvents[activityIndex];
+  const ids = event ? (event.targets.length ? event.targets : event.scope) : [];
+  const boxes = ids.map(id => buttons.get(id)).filter((button): button is HTMLButtonElement => Boolean(button));
+  const left = boxes.length ? Math.min(...boxes.map(box => box.offsetLeft)) : 0;
+  const right = boxes.length ? Math.max(...boxes.map(box => box.offsetLeft + box.offsetWidth)) : width;
+  const top = boxes.length ? Math.min(...boxes.map(box => box.offsetTop)) : 0;
+  const bottom = boxes.length ? Math.max(...boxes.map(box => box.offsetTop + box.offsetHeight)) : 0;
+  const stage = $('map-stage').getBoundingClientRect(), frame = viewport.getBoundingClientRect();
+  const stageX = stage.left - frame.left + viewport.scrollLeft, stageY = stage.top - frame.top + viewport.scrollTop;
+  viewport.scrollTo(stageX + (left + right) / 2 * zoom - viewport.clientWidth / 2, boxes.length ? stageY + (top + bottom) / 2 * zoom - viewport.clientHeight / 2 : 0);
 }
 for (const [id, icon] of Object.entries({ 'zoom-in': 'zoom-in', 'zoom-out': 'zoom-out', fit: 'maximize', actual: 'scan' })) $(id).innerHTML = icons[icon] || '';
 $('zoom-in').onclick = () => { fitting = false; zoom = Math.min(2, zoom + .15); updateZoom(); };
 $('zoom-out').onclick = () => { fitting = false; zoom = Math.max(.1, zoom - .15); updateZoom(); };
 $('actual').onclick = () => { fitting = false; zoom = 1; updateZoom(); };
-$('fit').onclick = () => { fitting = true; updateZoom(); viewport.scrollTo(0, 0); };
-new ResizeObserver(() => { if (fitting) updateZoom(); }).observe(viewport);
+$('fit').onclick = () => { fitting = true; fitAll = true; updateZoom(); viewport.scrollTo(0, 0); };
+new ResizeObserver(() => { if (fitting) { updateZoom(); focusChange(); } }).observe(viewport);
 window.addEventListener('resize', () => { if (fitting) updateZoom(); });
 updateZoom();
 const svgNS = 'http://www.w3.org/2000/svg';
@@ -582,13 +605,37 @@ mapPanes.append(impactPanel);
 // once the reader flips it, their choice holds across steps.
 let impactOverride: boolean | undefined;
 let impactActive = false;
+let impactNeighborCount = 0;
+// Between phone and wide layouts a fixed column would shrink the map below
+// legible size, so the list becomes a drawer over the map, opened from a tab.
+const impactDrawerQuery = window.matchMedia('(min-width: 801px) and (max-width: 1679px)');
+let impactDrawerOpen = false;
+const impactTab = document.createElement('button');
+impactTab.type = 'button';
+impactTab.id = 'impact-drawer-tab';
+impactTab.hidden = true;
+impactTab.setAttribute('aria-controls', 'impact-panel');
+impactTab.onclick = () => { impactDrawerOpen = true; syncSidePanel(); impactPanel.querySelector<HTMLElement>('.impact-close')?.focus(); };
+mapPanes.append(impactTab);
 // The workspace has one side slot. An open inspector takes it; closing the
 // inspector hands it back to the impact list.
 function syncSidePanel() {
   const show = impactActive && !workspace.classList.contains('inspector-open');
-  impactPanel.hidden = !show;
-  mapPanes.classList.toggle('impact', show);
+  const drawer = impactDrawerQuery.matches;
+  mapPanes.classList.toggle('impact', show && !drawer);
+  mapPanes.classList.toggle('impact-drawer', show && drawer);
+  impactPanel.hidden = !show || (drawer && !impactDrawerOpen);
+  impactTab.hidden = !show || !drawer || impactDrawerOpen;
+  impactTab.textContent = `${isChinese() ? '影响范围' : 'Impact'} · ${impactNeighborCount}`;
+  impactTab.setAttribute('aria-expanded', String(drawer && impactDrawerOpen));
 }
+impactDrawerQuery.addEventListener('change', () => syncSidePanel());
+document.addEventListener('keydown', event => {
+  if (event.key !== 'Escape' || !impactDrawerOpen || impactPanel.hidden || !impactDrawerQuery.matches || document.querySelector('dialog[open]')) return;
+  impactDrawerOpen = false;
+  syncSidePanel();
+  impactTab.focus();
+});
 const impactToggle = document.createElement('button');
 impactToggle.type = 'button';
 impactToggle.id = 'impact-toggle';
@@ -643,7 +690,15 @@ function renderImpact(event: ActivityEvent, neighbors: Map<string, Relationship[
     help.hidden = !impactHelpOpen;
     info.setAttribute('aria-expanded', String(impactHelpOpen));
   };
-  heading.append(title, info);
+  // Only shown in the drawer layout; the wide layout has nothing to close.
+  const close = document.createElement('button');
+  close.type = 'button';
+  close.className = 'impact-close';
+  close.innerHTML = iconMarkup('x');
+  close.title = close.ariaLabel = zh ? '收起影响范围' : 'Close impact list';
+  close.onclick = () => { impactDrawerOpen = false; syncSidePanel(); impactTab.focus(); };
+  heading.append(title, info, close);
+  impactNeighborCount = neighbors.size;
   const section = (title: string, count: number) => {
     const block = document.createElement('div');
     block.className = 'impact-section';
@@ -695,6 +750,7 @@ function renderImpact(event: ActivityEvent, neighbors: Map<string, Relationship[
   names.textContent = others.map(module => localized(module, 'name')).join(zh ? '、' : ', ') || '-';
   unrelated.append(names);
   impactPanel.replaceChildren(heading, help, scope, adjacent, unrelated);
+  syncSidePanel();
 }
 for (const scroll of mapPanes.querySelectorAll<HTMLElement>('.map-scroll')) {
   scroll.tabIndex = 0;
@@ -854,6 +910,7 @@ function updateActivity() {
     }
   } else legend.textContent = source;
   updateZoom();
+  focusChange();
 }
 
 const constraintRules = map.constraints || [];
@@ -1142,7 +1199,7 @@ const guideCopy: Record<GuideStep, [string, string, string, string]> = {
 };
 let guideIndex = 0;
 interface GuideSaved {
-  mode: ViewMode; impactOverride: boolean | undefined; index: number; selected: string | undefined; inspector: boolean; zoom: number; fitting: boolean; disclosure: boolean;
+  mode: ViewMode; impactOverride: boolean | undefined; index: number; selected: string | undefined; inspector: boolean; zoom: number; fitting: boolean; fitAll: boolean; disclosure: boolean;
   focus: Element | null; x: number; y: number; panes: [HTMLElement, number, number][];
   constraints: {open: boolean; selected: string | undefined; filter: string}; projectView: 'architecture' | 'constraints';
 }
@@ -1220,6 +1277,7 @@ function showGuideStep(animate = false) {
   } else activityIndex = saved.index;
   $('activity-disclosure').open = state.history;
   fitting = true;
+  fitAll = false;
   updateActivity();
   updateFlow();
   updateZoom();
@@ -1248,7 +1306,7 @@ function dismissGuideInvite() {
 function startGuide() {
   if (guideDialog.open) return;
   dismissGuideInvite();
-  guideSaved = { mode: activityMode, impactOverride, index: activityIndex, selected: selectedModuleId, inspector: workspace.classList.contains('inspector-open'), zoom, fitting, disclosure: $('activity-disclosure').open, focus: document.activeElement, x: scrollX, y: scrollY, constraints: {open: constraintPanelOpen, selected: selectedConstraintId, filter: constraintFilter}, projectView: new URLSearchParams(location.hash.slice(1)).get('view') === 'constraints' ? 'constraints' : 'architecture', panes: [...mapPanes.querySelectorAll<HTMLElement>('.map-scroll')].map(el => [el, el.scrollLeft, el.scrollTop]) };
+  guideSaved = { mode: activityMode, impactOverride, index: activityIndex, selected: selectedModuleId, inspector: workspace.classList.contains('inspector-open'), zoom, fitting, fitAll, disclosure: $('activity-disclosure').open, focus: document.activeElement, x: scrollX, y: scrollY, constraints: {open: constraintPanelOpen, selected: selectedConstraintId, filter: constraintFilter}, projectView: new URLSearchParams(location.hash.slice(1)).get('view') === 'constraints' ? 'constraints' : 'architecture', panes: [...mapPanes.querySelectorAll<HTMLElement>('.map-scroll')].map(el => [el, el.scrollLeft, el.scrollTop]) };
   guideIndex = 0;
 
   constraintPanelOpen = false;
@@ -1276,6 +1334,7 @@ function finishGuide() {
   zoom = saved.zoom;
   updateZoom();
   fitting = saved.fitting;
+  fitAll = saved.fitAll;
   for (const [el, x, y] of saved.panes) el.scrollTo(x, y);
   window.scrollTo(saved.x, saved.y);
   (saved.focus instanceof HTMLElement && saved.focus.isConnected && !saved.focus.closest('#guide-invite') ? saved.focus : guideLaunch).focus({ preventScroll: true });

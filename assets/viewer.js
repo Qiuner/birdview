@@ -1026,20 +1026,38 @@ ${localized2(module, "responsibility")}`;
   $("map").style.width = `${width}px`;
   $("map").style.height = `${height}px`;
   var zoom = 1;
+  var readableZoom = 0.8;
   var fitting = true;
+  var fitAll = false;
+  var floored = false;
   var viewport = query(".map-scroll");
   function updateZoom() {
     if (fitting) {
       const availableHeight = Math.max(180, Math.min(viewport.clientHeight - 40, window.innerHeight - viewport.getBoundingClientRect().top - 70));
-      zoom = Math.min(1.5, viewport.clientWidth / width, availableHeight / height);
-    }
+      const whole = Math.min(1.5, viewport.clientWidth / width, availableHeight / height);
+      floored = !fitAll && whole < readableZoom;
+      zoom = floored ? readableZoom : whole;
+    } else floored = false;
     $("map").style.transform = `scale(${zoom})`;
     $("map-stage").style.width = `${width * zoom}px`;
     $("map-stage").style.height = `${height * zoom}px`;
     $("zoom-value").textContent = `${Math.round(zoom * 100)}%`;
     buttonById("zoom-in").disabled = zoom >= 2;
     buttonById("zoom-out").disabled = zoom <= 0.1;
-    $("fit").setAttribute("aria-pressed", String(fitting));
+    $("fit").setAttribute("aria-pressed", String(fitting && !floored));
+  }
+  function focusChange() {
+    if (!fitting || !floored) return;
+    const event = activityMode === "architecture" ? void 0 : activityEvents[activityIndex];
+    const ids = event ? event.targets.length ? event.targets : event.scope : [];
+    const boxes = ids.map((id) => buttons.get(id)).filter((button) => Boolean(button));
+    const left = boxes.length ? Math.min(...boxes.map((box) => box.offsetLeft)) : 0;
+    const right = boxes.length ? Math.max(...boxes.map((box) => box.offsetLeft + box.offsetWidth)) : width;
+    const top = boxes.length ? Math.min(...boxes.map((box) => box.offsetTop)) : 0;
+    const bottom = boxes.length ? Math.max(...boxes.map((box) => box.offsetTop + box.offsetHeight)) : 0;
+    const stage = $("map-stage").getBoundingClientRect(), frame = viewport.getBoundingClientRect();
+    const stageX = stage.left - frame.left + viewport.scrollLeft, stageY = stage.top - frame.top + viewport.scrollTop;
+    viewport.scrollTo(stageX + (left + right) / 2 * zoom - viewport.clientWidth / 2, boxes.length ? stageY + (top + bottom) / 2 * zoom - viewport.clientHeight / 2 : 0);
   }
   for (const [id, icon] of Object.entries({ "zoom-in": "zoom-in", "zoom-out": "zoom-out", fit: "maximize", actual: "scan" })) $(id).innerHTML = icons[icon] || "";
   $("zoom-in").onclick = () => {
@@ -1059,11 +1077,15 @@ ${localized2(module, "responsibility")}`;
   };
   $("fit").onclick = () => {
     fitting = true;
+    fitAll = true;
     updateZoom();
     viewport.scrollTo(0, 0);
   };
   new ResizeObserver(() => {
-    if (fitting) updateZoom();
+    if (fitting) {
+      updateZoom();
+      focusChange();
+    }
   }).observe(viewport);
   window.addEventListener("resize", () => {
     if (fitting) updateZoom();
@@ -1416,11 +1438,37 @@ ${localized2(item, "note")}`).join("\n\n") || t("\u65E0\u6765\u6E90\u8BC1\u636E"
   mapPanes.append(impactPanel);
   var impactOverride;
   var impactActive = false;
+  var impactNeighborCount = 0;
+  var impactDrawerQuery = window.matchMedia("(min-width: 801px) and (max-width: 1679px)");
+  var impactDrawerOpen = false;
+  var impactTab = document.createElement("button");
+  impactTab.type = "button";
+  impactTab.id = "impact-drawer-tab";
+  impactTab.hidden = true;
+  impactTab.setAttribute("aria-controls", "impact-panel");
+  impactTab.onclick = () => {
+    impactDrawerOpen = true;
+    syncSidePanel();
+    impactPanel.querySelector(".impact-close")?.focus();
+  };
+  mapPanes.append(impactTab);
   function syncSidePanel() {
     const show = impactActive && !workspace.classList.contains("inspector-open");
-    impactPanel.hidden = !show;
-    mapPanes.classList.toggle("impact", show);
+    const drawer = impactDrawerQuery.matches;
+    mapPanes.classList.toggle("impact", show && !drawer);
+    mapPanes.classList.toggle("impact-drawer", show && drawer);
+    impactPanel.hidden = !show || drawer && !impactDrawerOpen;
+    impactTab.hidden = !show || !drawer || impactDrawerOpen;
+    impactTab.textContent = `${isChinese2() ? "\u5F71\u54CD\u8303\u56F4" : "Impact"} \xB7 ${impactNeighborCount}`;
+    impactTab.setAttribute("aria-expanded", String(drawer && impactDrawerOpen));
   }
+  impactDrawerQuery.addEventListener("change", () => syncSidePanel());
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape" || !impactDrawerOpen || impactPanel.hidden || !impactDrawerQuery.matches || document.querySelector("dialog[open]")) return;
+    impactDrawerOpen = false;
+    syncSidePanel();
+    impactTab.focus();
+  });
   var impactToggle = document.createElement("button");
   impactToggle.type = "button";
   impactToggle.id = "impact-toggle";
@@ -1470,7 +1518,18 @@ ${localized2(item, "note")}`).join("\n\n") || t("\u65E0\u6765\u6E90\u8BC1\u636E"
       help.hidden = !impactHelpOpen;
       info.setAttribute("aria-expanded", String(impactHelpOpen));
     };
-    heading.append(title, info);
+    const close = document.createElement("button");
+    close.type = "button";
+    close.className = "impact-close";
+    close.innerHTML = iconMarkup("x");
+    close.title = close.ariaLabel = zh ? "\u6536\u8D77\u5F71\u54CD\u8303\u56F4" : "Close impact list";
+    close.onclick = () => {
+      impactDrawerOpen = false;
+      syncSidePanel();
+      impactTab.focus();
+    };
+    heading.append(title, info, close);
+    impactNeighborCount = neighbors.size;
     const section = (title2, count) => {
       const block = document.createElement("div");
       block.className = "impact-section";
@@ -1531,6 +1590,7 @@ ${localized2(item, "note")}`).join("\n\n") || t("\u65E0\u6765\u6E90\u8BC1\u636E"
     names.textContent = others.map((module) => localized2(module, "name")).join(zh ? "\u3001" : ", ") || "-";
     unrelated.append(names);
     impactPanel.replaceChildren(heading, help, scope, adjacent, unrelated);
+    syncSidePanel();
   }
   for (const scroll of mapPanes.querySelectorAll(".map-scroll")) {
     scroll.tabIndex = 0;
@@ -1695,6 +1755,7 @@ ${check.status} \xB7 exit ${check.exitCode ?? "-"} \xB7 ${localized2(check, "sum
       }
     } else legend.textContent = source;
     updateZoom();
+    focusChange();
   }
   var constraintRules = map.constraints || [];
   var constraintPanelOpen = false;
@@ -2078,6 +2139,7 @@ ${localized2(check, "summary")}`);
     } else activityIndex = saved.index;
     $("activity-disclosure").open = state.history;
     fitting = true;
+    fitAll = false;
     updateActivity();
     updateFlow();
     updateZoom();
@@ -2108,7 +2170,7 @@ ${localized2(check, "summary")}`);
   function startGuide() {
     if (guideDialog.open) return;
     dismissGuideInvite();
-    guideSaved = { mode: activityMode, impactOverride, index: activityIndex, selected: selectedModuleId, inspector: workspace.classList.contains("inspector-open"), zoom, fitting, disclosure: $("activity-disclosure").open, focus: document.activeElement, x: scrollX, y: scrollY, constraints: { open: constraintPanelOpen, selected: selectedConstraintId, filter: constraintFilter }, projectView: new URLSearchParams(location.hash.slice(1)).get("view") === "constraints" ? "constraints" : "architecture", panes: [...mapPanes.querySelectorAll(".map-scroll")].map((el) => [el, el.scrollLeft, el.scrollTop]) };
+    guideSaved = { mode: activityMode, impactOverride, index: activityIndex, selected: selectedModuleId, inspector: workspace.classList.contains("inspector-open"), zoom, fitting, fitAll, disclosure: $("activity-disclosure").open, focus: document.activeElement, x: scrollX, y: scrollY, constraints: { open: constraintPanelOpen, selected: selectedConstraintId, filter: constraintFilter }, projectView: new URLSearchParams(location.hash.slice(1)).get("view") === "constraints" ? "constraints" : "architecture", panes: [...mapPanes.querySelectorAll(".map-scroll")].map((el) => [el, el.scrollLeft, el.scrollTop]) };
     guideIndex = 0;
     constraintPanelOpen = false;
     guideDialog.showModal();
@@ -2135,6 +2197,7 @@ ${localized2(check, "summary")}`);
     zoom = saved.zoom;
     updateZoom();
     fitting = saved.fitting;
+    fitAll = saved.fitAll;
     for (const [el, x, y] of saved.panes) el.scrollTo(x, y);
     window.scrollTo(saved.x, saved.y);
     (saved.focus instanceof HTMLElement && saved.focus.isConnected && !saved.focus.closest("#guide-invite") ? saved.focus : guideLaunch).focus({ preventScroll: true });

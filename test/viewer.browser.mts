@@ -16,7 +16,8 @@ const events = activity(read('harness.activity.jsonl'));
 const output = fs.mkdtempSync(path.join(os.tmpdir(), 'birdview-views-'));
 const browser = await chromium.launch({ headless: true });
 try {
-  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  // Wide enough for the fixed impact column; the drawer layout is checked separately below.
+  const page = await browser.newPage({ viewport: { width: 1800, height: 1000 } });
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   const load = async (data: Architecture, records: ActivityEvent[], simulation: boolean) => {
@@ -117,6 +118,19 @@ try {
   assert.ok(stacked.panelTop >= stacked.mapBottom && stacked.mapHeight > 120, JSON.stringify(stacked));
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   await page.screenshot({ path: path.join(output, 'mobile-impact.png'), fullPage: true });
+  // Mid-width laptops: the list is a drawer over the map, so opening it never rescales the map.
+  await page.setViewportSize({ width: 1366, height: 768 });
+  await page.locator('#fit').click();
+  assert.equal(await page.locator('#impact-panel').isVisible(), false);
+  assert.match(present(await page.locator('#impact-drawer-tab').textContent()), new RegExp(` · ${crossing(impactScope).size}$`));
+  const drawerZoom = await page.locator('#zoom-value').textContent();
+  await page.locator('#impact-drawer-tab').click();
+  assert.equal(await page.locator('#impact-panel').isVisible(), true);
+  assert.equal(await page.locator('#zoom-value').textContent(), drawerZoom);
+  await page.screenshot({ path: path.join(output, 'laptop-impact-drawer.png') });
+  await page.keyboard.press('Escape');
+  assert.equal(await page.locator('#impact-panel').isVisible(), false);
+  assert.equal(await page.locator('#impact-drawer-tab').evaluate(node => node === document.activeElement), true);
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.locator('[data-view="activity"]').click();
   await page.locator('#theme').click();

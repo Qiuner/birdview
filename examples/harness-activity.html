@@ -249,7 +249,8 @@ SOFTWARE.
 .constraint-source{padding:9px 0;color:var(--mint);font-size:11px;border-top:1px solid var(--line)}
 .constraint-source summary{font-family:Consolas,monospace}
 .constraint-empty{padding:20px 0;text-align:center}
-.workspace .constraint-module-link{display:block;width:100%;height:auto;text-align:left;padding:9px 0;border:0;border-bottom:1px solid var(--line);border-radius:0;font-size:12px;line-height:1.7;color:var(--mint);overflow-wrap:anywhere}
+/* The id outranks the global `button:not(.node):not(.step)` sizing rule. */
+#module-constraints .constraint-module-link{display:block;width:100%;height:auto;text-align:left;padding:9px 0;border:0;border-bottom:1px solid var(--line);border-radius:0;font-size:12px;line-height:1.7;color:var(--mint);overflow-wrap:anywhere}
 .workspace .node.constraint-highlight{opacity:1!important;filter:none;border-color:var(--mint)!important;outline:2px solid var(--mint);outline-offset:5px}
 .workspace .edge.constraint-highlight{stroke:var(--mint);stroke-width:3;opacity:1!important}
 @media(max-width:1000px){.workspace.constraints-open{grid-template-columns:minmax(0,1fr)}.workspace.constraints-open aside{width:min(380px,100%);padding:20px}}

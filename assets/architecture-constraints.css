@@ -46,3 +46,9 @@
 @media(max-width:1000px){.workspace.constraints-open{grid-template-columns:minmax(0,1fr)}.workspace.constraints-open aside{width:min(27.1429rem,100%);padding:1.4286rem}}
 @media(max-width:600px){#show-constraints{margin-left:auto}.workspace.constraints-open aside{width:100%}}
 @media(prefers-reduced-motion:reduce){#constraints-panel .constraint-row{transition:none}}
+/* Project views: architecture, constraints and review share one switcher. */
+#project-views{display:flex;flex:none;gap:0.2143rem;padding:0.2143rem;border:1px solid var(--line);border-radius:0.5714rem}
+#project-views button,#project-views a{display:inline-flex;align-items:center;width:auto;height:2rem;padding:0 1.0714rem;border:0;border-radius:0.3571rem;background:transparent;color:var(--muted);font:inherit;font-size:0.8571rem;white-space:nowrap;text-decoration:none}
+#project-views [aria-pressed="true"]{background:var(--line);color:inherit;box-shadow:0 1px 0.2143rem #0002}
+#project-views button:focus-visible,#project-views a:focus-visible{outline:2px solid var(--mint);outline-offset:0.2143rem}
+@media(max-width:600px){#project-views{margin-left:auto}#project-views button,#project-views a{padding:0 0.7143rem}}

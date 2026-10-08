@@ -7,8 +7,8 @@
   "CONTRIBUTING.zh.md": "40afca157d769f3d7e6588eb66b20173d32c5e6622d83938910f11fb848affe7",
   "README.md": "f03914f10f4469b466b1793da8f3bbd99aee6592e4af052d1855e3544a82cfab",
   "README.zh.md": "02f9df9a7e86f14066c03b1acc5e96b83fda832745af7bd96c00d62434d1b804",
-  "SKILL.md": "972e4371d709115d31b222a8429bfe07ec1b15df09002e04f4630843b46ceb6d",
-  "SKILL.zh.md": "0c1102754188a1e516cf8636d503a294aaeb6f1495461d40025ccc8195582ee2",
+  "SKILL.md": "1a87c5d5947338ce3d278880a0b0d7e2908d1bcef7c8f7c76a0be212f7e63344",
+  "SKILL.zh.md": "cb903204ac8d9c66af90b14e73fccdc5997a383aee9934915b742d00060cc6b6",
   "compatibility-audit/SKILL.md": "4de6aa0bb0308e57228a5817602f8c3361ecf760824e91f40a17f493e11d859a",
   "compatibility-audit/SKILL.zh.md": "498cf35d317f4e63a347d1a6cfc9d9b4d3a03e1a577f85c1a24512ce267e2771",
   "compatibility-audit/references/report-contract.md": "edbcc340395f1c8a98c1c063015363e7fca2debbf7da5399e57d739cb8a1b805",
@@ -57,10 +57,14 @@
   "references/map-project.zh.md": "c189a361295f9e2e174908603b84ea2a8cdc3959b2c64a34a736ea2086230705",
   "references/modes.md": "64b97168898d3d712fbdc037f01e9fcaaeb7bc7d9039d99dd616301efb964dd1",
   "references/modes.zh.md": "ae1af818fb6ecda0cc0d17af386cbce9992383f7df595535832319b416ee5634",
-  "references/review-architecture.md": "69a9e6670f79745a0ca6a4e3db690be71c79d7bb0b6f0c741fe830f1745af5e4",
-  "references/review-architecture.zh.md": "f6d4a35b78ef36d10824e4b945172bf4b80c462cfe391cb7401ad8fe2ea921a8",
+  "references/review-architecture.md": "be7209367fc945060f94b4594ac39b7ce61125d344be08eb0bc9e00f20035695",
+  "references/review-architecture.zh.md": "42b6d7808421ce8af66cdc7eebaa2a232010396eed73e1e8db1e1d8264c74782",
+  "references/review-contract.md": "72cb8ee2b5a1e06af39b88338063a3f14c3954adb984f7cdda3637ab34ba96bb",
+  "references/review-contract.zh.md": "309938429581f7edc98d78fbbdcce5609bb8e5d24beac2a5718935239336cf74",
   "references/show-changes.md": "d58abe88d2610735e338eaddd279f6f011b208ffa724a2834af0fb1e3b7cd275",
   "references/show-changes.zh.md": "9123a8a5c0f87584166cf98c27d149c229081f434011e520417411e3cf8773df",
   "references/skill-compatibility.md": "b7c07548d9d5ebbc954664ce6886be3a3816215d05a8a1e2cbc8434426c276d9",
-  "references/skill-compatibility.zh.md": "a711e1f2a0a857fb666ce66eccfc1524d7ba9ef50ff50679d780b534d6689c50"
+  "references/skill-compatibility.zh.md": "a711e1f2a0a857fb666ce66eccfc1524d7ba9ef50ff50679d780b534d6689c50",
+  "review-skill/SKILL.md": "012dc7d5d73b8350ea9182f774059c76e7a4aa0b19d91f302e7fb3613c104999",
+  "review-skill/SKILL.zh.md": "47cc05254ffdd3a91a42445452e6634cc78e8b38be1ae053d1050c2ba6b7888b"
 }

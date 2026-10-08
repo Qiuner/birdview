@@ -1,6 +1,6 @@
 ---
 name: birdview
-description: Show evidence-linked architecture, constraints and change scope. Default to on-demand for explicit Birdview or map requests. Also activate before coding when the project explicitly configures Birdview auto mode. Ordinary coding does not activate Birdview without that opt-in.
+description: Show evidence-linked architecture, constraints and change scope, or review architecture improvement opportunities. Use for Birdview/map requests or requests to optimize architecture, review module boundaries or 优化架构. Also activate before coding when the project explicitly configures Birdview auto mode. Ordinary coding does not activate Birdview without that opt-in.
 ---
 
 # Birdview
@@ -13,11 +13,13 @@ Show the system on an evidence-linked architecture map and highlight the modules
 
 Project `off` disables the foundation and map workflow unless explicitly requested for the current task. Installed project foundation rules remain applicable in `on-demand` even without skill activation; their canonical managed text is [foundation.txt](references/foundation.txt). For project setup, disabling or removal of managed rules, follow [modes.md](references/modes.md); do not start mapping merely to configure rules.
 
-Birdview defaults to `on-demand`: activate only when the user selects the skill, names Birdview, or requests an architecture/constraint/change map. Ordinary coding, small fixes and feature planning do not activate it by default. If the project host instruction file explicitly configures `auto`, activate before every code-changing task, including small edits, and planning that explicitly analyzes affected modules. Honor existing `auto` settings; `setup` preserves them. Honor `off` unless explicitly invoked for this task. Merely discussing the skill does not request a map. When active for authorized coding, reuse/update the map and declare affected modules before editing.
+Birdview defaults to `on-demand`: activate when the user selects the skill, names Birdview, requests an architecture/constraint/change map, or requests architecture improvement through the review route below. Ordinary coding, small fixes and feature planning do not activate it by default. If the project host instruction file explicitly configures `auto`, activate before every code-changing task, including small edits, and planning that explicitly analyzes affected modules. Honor existing `auto` settings; `setup` preserves them. Honor `off` unless explicitly invoked for this task. Merely discussing the skill does not request a map. When active for authorized coding, reuse/update the map and declare affected modules before editing.
 
 In Codex, use `/skills` to select Birdview or mention `$birdview`. Claude Code exposes the installed skill as `/birdview`. Other hosts use their skill selector or an explicit Birdview request; do not assume they implement the same slash command. Invocation applies to the current task, not all future edits.
 
 For mode changes/status, follow [modes.md](references/modes.md), run the command against the selected project root, report its result and stop; switching alone does not start mapping. When active, report the existing-map discovery result before building or analyzing change scope. These are agent instructions, not enforced write interception.
+
+For requests to optimize architecture, review module boundaries or find architectural refactoring opportunities, follow [review-architecture.md](references/review-architecture.md) directly instead of the default full-project mapping workflow below; naming Birdview is not required. The dedicated entry is `$birdview-review` in Codex or `/birdview-review` in Claude Code when installed. This is a separate on-demand review route and does not enable project auto mode. Ordinary local refactors and discussion about implementing the skill do not request a review. If both entries are selected, perform one review using this shared workflow.
 
 ## Workflow
 
@@ -46,7 +48,7 @@ For authorized coding tasks after activation, read related implementations, call
 
 For planning, resolve questions from source and existing decisions first. Ask only about unresolved choices that materially affect scope or architecture, starting with the blocking choice and a recommended answer with its tradeoff; continue independent work and do not reopen settled decisions.
 
-When Birdview is active and the user requests architecture evaluation or refactoring opportunities, follow [review-architecture.md](references/review-architecture.md) after Stage 1. Ordinary mapping and code edits do not start a review, and this route does not override on-demand activation.
+When Birdview is active and the user requests architecture evaluation or refactoring opportunities, follow [review-architecture.md](references/review-architecture.md). Ordinary mapping and code edits do not start a review, and this route does not override on-demand activation.
 
 - Read [contract.md](references/contract.md) for fields and validation. Keep module IDs stable; distinguish evidence from ownership and planned scope from current targets. Neighbors are not automatically edit targets.
 - Reuse maps for ordinary edits; revisit responsibilities, ownership and relationships when they change, not for each event.

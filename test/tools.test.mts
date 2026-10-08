@@ -11,7 +11,7 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 test('documentation checker detects drift and invalid records without overwriting them', t => {
   const fixture = fs.mkdtempSync(path.join(os.tmpdir(), 'birdview-docs-test-'));
   t.after(() => fs.rmSync(fixture, { recursive: true, force: true }));
-  for (const directory of ['scripts', 'references', 'docs', 'examples', '.github', 'compatibility-audit']) {
+  for (const directory of ['scripts', 'references', 'docs', 'examples', '.github', 'review-skill', 'compatibility-audit']) {
     fs.mkdirSync(path.join(fixture, directory));
   }
   const checker = path.join(fixture, 'scripts/check-docs.mjs');
@@ -21,9 +21,11 @@ test('documentation checker detects drift and invalid records without overwritin
   const run = (...args: string[]) => spawnSync(process.execPath, [checker, ...args], { encoding: 'utf8', cwd: os.tmpdir() });
   assert.equal(run('--update').status, 0);
   assert.equal(run().status, 0);
-  fs.writeFileSync(path.join(fixture, 'compatibility-audit/SKILL.md'), '# Audit\n');
-  assert.match(run().stderr, /compatibility-audit\/SKILL.md: missing compatibility-audit\/SKILL.zh.md/);
-  fs.unlinkSync(path.join(fixture, 'compatibility-audit/SKILL.md'));
+  for (const directory of ['compatibility-audit', 'review-skill']) {
+    fs.writeFileSync(path.join(fixture, directory, 'SKILL.md'), '# Skill\n');
+    assert.ok(run().stderr.includes(directory + '/SKILL.md: missing ' + directory + '/SKILL.zh.md'));
+    fs.unlinkSync(path.join(fixture, directory, 'SKILL.md'));
+  }
   const record = path.join(fixture, 'docs/i18n.json');
   const saved = fs.readFileSync(record, 'utf8');
   fs.appendFileSync(path.join(fixture, 'README.md'), '\nChanged\n');
@@ -49,7 +51,7 @@ test('build checker compares fresh compiler output and detects missing or stale 
   const checker = path.join(fixture, 'scripts/check-build.mjs');
   fs.copyFileSync(path.join(root, 'scripts/check-build.mjs'), checker);
   fs.copyFileSync(checker, path.join(fixture, 'src/check-build.mjs'));
-  const staticArtifacts = ['scripts/viewer/routing.mjs', 'scripts/viewer/i18n.mjs', 'assets/viewer.js', 'assets/constraint-canvas.js', 'assets/theme.js', 'docs/site.js', 'schemas/activity.schema.json', 'schemas/architecture.schema.json'];
+  const staticArtifacts = ['scripts/viewer/routing.mjs', 'scripts/viewer/i18n.mjs', 'assets/viewer.js', 'assets/constraint-canvas.js', 'assets/theme.js', 'docs/site.js', 'schemas/activity.schema.json', 'schemas/architecture.schema.json', 'assets/review.js', 'schemas/review.schema.json'];
   for (const file of staticArtifacts) fs.writeFileSync(path.join(fixture, file), '');
   const inventory = ['scripts/example.mjs', 'scripts/check-build.mjs', 'scripts/contracts/export.mjs', ...staticArtifacts];
   fs.writeFileSync(path.join(fixture, 'build-artifacts.json'), JSON.stringify(inventory));

@@ -2242,16 +2242,34 @@ ${localized2(check, "summary")}`);
     guideFrame = requestAnimationFrame(positionGuide);
   }).observe($("guide-card"));
   guideLabels();
-  if (DATA.constraintView) {
-    const view = DATA.constraintView;
-    const main = query("body > main");
+  if (DATA.constraintView || DATA.reviewHref) {
     const nav = document.createElement("nav");
     nav.id = "project-views";
     const architecture = document.createElement("button");
-    const constraints = document.createElement("button");
-    architecture.type = constraints.type = "button";
-    nav.append(architecture, constraints);
+    architecture.type = "button";
+    architecture.setAttribute("aria-pressed", "true");
+    nav.append(architecture);
     query("header .task").after(nav);
+    const review = DATA.reviewHref ? document.createElement("a") : void 0;
+    const labels = () => {
+      nav.setAttribute("aria-label", isChinese2() ? "\u9879\u76EE\u89C6\u56FE" : "Project views");
+      architecture.textContent = isChinese2() ? "\u67B6\u6784" : "Architecture";
+      if (review) review.textContent = isChinese2() ? "\u8BC4\u5BA1" : "Review";
+    };
+    if (review) {
+      review.href = DATA.reviewHref;
+      nav.append(review);
+    }
+    labels();
+    new MutationObserver(labels).observe(document.documentElement, { attributes: true, attributeFilter: ["lang"] });
+    if (DATA.constraintView) mountConstraintView(nav, architecture, review);
+  }
+  function mountConstraintView(nav, architecture, review) {
+    const view = required(DATA.constraintView);
+    const main = query("body > main");
+    const constraints = document.createElement("button");
+    constraints.type = "button";
+    nav.insertBefore(constraints, review ?? null);
     main.id = "architecture-view";
     architecture.setAttribute("aria-controls", main.id);
     const panel = document.createElement("section");

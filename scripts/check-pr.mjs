@@ -9,7 +9,7 @@ const checks = [
     ['Unit tests', npm, ['test']],
     ['Browser tests', npm, ['run', 'test:browser']],
     ['Tracked demo regeneration', npm, ['run', 'build:demo']],
-    ['Tracked demo diff', 'git', ['diff', '--exit-code', '--', 'examples/harness-activity.html']],
+    ['Tracked demo diff', 'git', ['diff', '--exit-code', '--', 'examples/harness-activity.html', 'examples/review.html']],
     ['Example validation', npm, ['run', 'validate:examples']],
     ['Documentation links and hashes', 'node', ['scripts/check-docs.mjs']],
 ];

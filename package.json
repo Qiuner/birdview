@@ -14,7 +14,7 @@
     "typecheck": "tsc --project tsconfig.types.json && tsc --project tsconfig.viewer.json",
     "build": "tsc && node scripts/build-viewer.mjs && node scripts/contracts/export.mjs",
     "check:build": "node scripts/check-build.mjs && node scripts/build-viewer.mjs --check",
-    "build:demo": "node scripts/render.mjs examples/system.architecture.json examples/harness-activity.html examples/harness.activity.jsonl --simulation",
+    "build:demo": "node scripts/render.mjs examples/system.architecture.json examples/harness-activity.html examples/harness.activity.jsonl --simulation && node scripts/render-review.mjs examples/review.json examples/review.html --repo .",
     "validate:examples": "node scripts/validate.mjs examples/architecture.json examples/activity.jsonl",
     "test": "npm run build:tests -- --unit",
     "build:tests": "tsc --project tsconfig.test.json && node scripts/build-tests.mjs",

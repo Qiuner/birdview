@@ -11,6 +11,7 @@ declare const DATA: {
   simulation?: boolean;
   constraintFreshness?: ConstraintFreshness;
   constraintView?: { graph: ConstraintGraph; snapshot: string; scope: string; rules: Array<{ id: string; modules: string[] }> };
+  reviewHref?: string;
 };
 const { map, icons, brandLogo } = DATA;
 function required<T>(value: T | null | undefined): T {
@@ -1353,14 +1354,30 @@ document.addEventListener('scroll', repositionGuide, true);
 new ResizeObserver(() => { cancelAnimationFrame(guideFrame); guideFrame = requestAnimationFrame(positionGuide); }).observe($('guide-card'));
 guideLabels();
 
-if (DATA.constraintView) {
-  const view = DATA.constraintView;
-  const main = query('body > main');
+// Project views: architecture always; constraints when a reviewed catalog is embedded;
+// review when a sibling review page was rendered. All share one switcher.
+if (DATA.constraintView || DATA.reviewHref) {
   const nav = document.createElement('nav'); nav.id = 'project-views';
   const architecture = document.createElement('button');
-  const constraints = document.createElement('button');
-  architecture.type = constraints.type = 'button'; nav.append(architecture, constraints);
+  architecture.type = 'button'; architecture.setAttribute('aria-pressed', 'true'); nav.append(architecture);
   query('header .task').after(nav);
+  const review = DATA.reviewHref ? document.createElement('a') : undefined;
+  const labels = (): void => {
+    nav.setAttribute('aria-label', isChinese() ? '项目视图' : 'Project views');
+    architecture.textContent = isChinese() ? '架构' : 'Architecture';
+    if (review) review.textContent = isChinese() ? '评审' : 'Review';
+  };
+  if (review) { review.href = DATA.reviewHref!; nav.append(review); }
+  labels();
+  new MutationObserver(labels).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
+  if (DATA.constraintView) mountConstraintView(nav, architecture, review);
+}
+function mountConstraintView(nav: HTMLElement, architecture: HTMLButtonElement, review: HTMLAnchorElement | undefined): void {
+  const view = required(DATA.constraintView);
+  const main = query('body > main');
+  const constraints = document.createElement('button');
+  constraints.type = 'button';
+  nav.insertBefore(constraints, review ?? null);
   main.id = 'architecture-view'; architecture.setAttribute('aria-controls', main.id);
   const panel = document.createElement('section'); panel.id = 'constraint-view'; panel.hidden = true;
   constraints.setAttribute('aria-controls', panel.id); main.after(panel);

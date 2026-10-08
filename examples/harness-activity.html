@@ -255,6 +255,12 @@ SOFTWARE.
 @media(max-width:1000px){.workspace.constraints-open{grid-template-columns:minmax(0,1fr)}.workspace.constraints-open aside{width:min(27.1429rem,100%);padding:1.4286rem}}
 @media(max-width:600px){#show-constraints{margin-left:auto}.workspace.constraints-open aside{width:100%}}
 @media(prefers-reduced-motion:reduce){#constraints-panel .constraint-row{transition:none}}
+/* Project views: architecture, constraints and review share one switcher. */
+#project-views{display:flex;flex:none;gap:0.2143rem;padding:0.2143rem;border:1px solid var(--line);border-radius:0.5714rem}
+#project-views button,#project-views a{display:inline-flex;align-items:center;width:auto;height:2rem;padding:0 1.0714rem;border:0;border-radius:0.3571rem;background:transparent;color:var(--muted);font:inherit;font-size:0.8571rem;white-space:nowrap;text-decoration:none}
+#project-views [aria-pressed="true"]{background:var(--line);color:inherit;box-shadow:0 1px 0.2143rem #0002}
+#project-views button:focus-visible,#project-views a:focus-visible{outline:2px solid var(--mint);outline-offset:0.2143rem}
+@media(max-width:600px){#project-views{margin-left:auto}#project-views button,#project-views a{padding:0 0.7143rem}}
 
     .node,.edge{transition:opacity 150ms cubic-bezier(0.23,1,0.32,1)}
     :root[data-motion-input="pointer"] .workspace.inspector-open aside{transition:opacity 200ms cubic-bezier(0.23,1,0.32,1),transform 200ms cubic-bezier(0.23,1,0.32,1)}
@@ -2558,16 +2564,34 @@ ${localized2(check, "summary")}`);
     guideFrame = requestAnimationFrame(positionGuide);
   }).observe($("guide-card"));
   guideLabels();
-  if (DATA.constraintView) {
-    const view = DATA.constraintView;
-    const main = query("body > main");
+  if (DATA.constraintView || DATA.reviewHref) {
     const nav = document.createElement("nav");
     nav.id = "project-views";
     const architecture = document.createElement("button");
-    const constraints = document.createElement("button");
-    architecture.type = constraints.type = "button";
-    nav.append(architecture, constraints);
+    architecture.type = "button";
+    architecture.setAttribute("aria-pressed", "true");
+    nav.append(architecture);
     query("header .task").after(nav);
+    const review = DATA.reviewHref ? document.createElement("a") : void 0;
+    const labels = () => {
+      nav.setAttribute("aria-label", isChinese2() ? "\u9879\u76EE\u89C6\u56FE" : "Project views");
+      architecture.textContent = isChinese2() ? "\u67B6\u6784" : "Architecture";
+      if (review) review.textContent = isChinese2() ? "\u8BC4\u5BA1" : "Review";
+    };
+    if (review) {
+      review.href = DATA.reviewHref;
+      nav.append(review);
+    }
+    labels();
+    new MutationObserver(labels).observe(document.documentElement, { attributes: true, attributeFilter: ["lang"] });
+    if (DATA.constraintView) mountConstraintView(nav, architecture, review);
+  }
+  function mountConstraintView(nav, architecture, review) {
+    const view = required(DATA.constraintView);
+    const main = query("body > main");
+    const constraints = document.createElement("button");
+    constraints.type = "button";
+    nav.insertBefore(constraints, review ?? null);
     main.id = "architecture-view";
     architecture.setAttribute("aria-controls", main.id);
     const panel = document.createElement("section");

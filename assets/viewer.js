@@ -813,7 +813,7 @@
   }
   function $(id) {
     const node = document.getElementById(id);
-    if (id === "connections" || id === "overview-connections") return element(node, SVGSVGElement);
+    if (id === "connections") return element(node, SVGSVGElement);
     if (id === "activity-step") return element(node, HTMLSelectElement);
     if (id === "activity-disclosure") return element(node, HTMLDetailsElement);
     if (id === "guide-progress") return element(node, HTMLProgressElement);
@@ -1031,17 +1031,11 @@ ${localized2(module, "responsibility")}`;
   function updateZoom() {
     if (fitting) {
       const availableHeight = Math.max(180, Math.min(viewport.clientHeight - 40, window.innerHeight - viewport.getBoundingClientRect().top - 70));
-      zoom = Math.min(1, viewport.clientWidth / width, availableHeight / height);
+      zoom = Math.min(1.5, viewport.clientWidth / width, availableHeight / height);
     }
     $("map").style.transform = `scale(${zoom})`;
     $("map-stage").style.width = `${width * zoom}px`;
     $("map-stage").style.height = `${height * zoom}px`;
-    const overview = document.getElementById("overview-map");
-    if (overview) {
-      overview.style.transform = `scale(${zoom})`;
-      $("overview-stage").style.width = `${width * zoom}px`;
-      $("overview-stage").style.height = `${height * zoom}px`;
-    }
     $("zoom-value").textContent = `${Math.round(zoom * 100)}%`;
     buttonById("zoom-in").disabled = zoom >= 2;
     buttonById("zoom-out").disabled = zoom <= 0.1;
@@ -1067,7 +1061,6 @@ ${localized2(module, "responsibility")}`;
     fitting = true;
     updateZoom();
     viewport.scrollTo(0, 0);
-    document.getElementById("overview-scroll")?.scrollTo(0, 0);
   };
   new ResizeObserver(() => {
     if (fitting) updateZoom();
@@ -1088,6 +1081,10 @@ ${localized2(module, "responsibility")}`;
   arrow.setAttribute("fill", "#809487");
   marker.append(arrow);
   defs.append(marker);
+  var changeMarker = element(marker.cloneNode(true), SVGMarkerElement);
+  changeMarker.id = "arrow-change";
+  required(changeMarker.firstElementChild).setAttribute("class", "arrow-change-head");
+  defs.append(changeMarker);
   $("connections").append(defs);
   var edges = [];
   var selectedModuleId;
@@ -1135,9 +1132,10 @@ ${localized2(module, "responsibility")}`;
     for (const edge of edges) {
       edge.path.classList.toggle("relevant", edge.relation.from === activeModuleId || edge.relation.to === activeModuleId);
       const relevant = edge.path.classList.contains("relevant");
-      const visible = relationView.value === "all" || edge.relation.visibility === "overview" || relevant || edge.path.classList.contains("constraint-highlight");
+      const visible = relationView.value === "all" || edge.relation.visibility === "overview" || relevant || edge.path.classList.contains("constraint-highlight") || edge.path.classList.contains("activity-edge-core") || edge.path.classList.contains("impact-edge");
       edge.path.style.display = visible ? "" : "none";
       edge.path.classList.toggle("context-muted", Boolean(activeModuleId) && !relevant);
+      edge.label.classList.toggle("context-muted", Boolean(activeModuleId) && !relevant);
       if (visible) visibleCount++;
       const active = visible && flowToggle.checked && !reducedMotion.matches && !document.hidden && relevant;
       edge.dot.style.display = active ? "" : "none";
@@ -1166,7 +1164,6 @@ ${localized2(module, "responsibility")}`;
       badge.title = hint;
       button.setAttribute("aria-label", `${localized2(module, "name")}${module.status === "uncertain" ? `, ${t("\u5F85\u786E\u8BA4")}` : ""}${count ? `, ${hint}` : ""}`);
     }
-    syncOverview();
   }
   flowToggle.onchange = updateFlow;
   reducedMotion.addEventListener("change", updateFlow);
@@ -1189,7 +1186,16 @@ ${localized2(module, "responsibility")}`;
     dot.setAttribute("aria-hidden", "true");
     dot.style.display = "none";
     $("connections").append(dot);
-    edges.push({ path, relation, dot });
+    const label = document.createElementNS(svgNS, "text");
+    label.setAttribute("class", "edge-label");
+    label.setAttribute("aria-hidden", "true");
+    $("connections").append(label);
+    edges.push({ path, relation, dot, label });
+  }
+  for (const { path, label } of edges) {
+    const middle = path.getPointAtLength(path.getTotalLength() / 2);
+    label.setAttribute("x", String(middle.x));
+    label.setAttribute("y", String(middle.y - 6));
   }
   var buttons = /* @__PURE__ */ new Map();
   for (const module of map.modules) {
@@ -1272,6 +1278,7 @@ ${module.responsibility}`;
   query(".map-tools").append(showDetails);
   function setInspector(open) {
     workspace.classList.toggle("inspector-open", open);
+    if (document.getElementById("impact-panel")) syncSidePanel();
     showDetails.setAttribute("aria-expanded", String(open));
     updateConstraints();
     if (fitting) updateZoom();
@@ -1326,7 +1333,7 @@ ${localized2(item, "note")}`).join("\n\n") || t("\u65E0\u6765\u6E90\u8BC1\u636E"
   var activityPanel = document.createElement("section");
   activityPanel.className = "activity-panel";
   activityPanel.hidden = !activityEvents.length;
-  activityPanel.innerHTML = '<div class="activity-toolbar"><div id="activity-mode" role="group"></div><span id="activity-source"></span><div class="activity-history"><button id="activity-prev"></button><select id="activity-step"></select><button id="activity-next"></button><button id="activity-latest"></button></div></div><div id="activity-summary" aria-live="polite"></div><details id="activity-disclosure"><summary></summary><div id="activity-details"></div></details>';
+  activityPanel.innerHTML = '<div class="activity-toolbar"><div id="activity-mode" role="group"></div><span id="activity-source"></span><div class="activity-history"><button id="activity-prev"></button><select id="activity-step"></select><button id="activity-next"></button><button id="activity-latest"></button></div><span id="activity-phase"></span></div><div id="activity-summary" aria-live="polite"></div><div id="activity-meta"><div id="activity-targets"></div><details id="activity-disclosure"><summary></summary><div id="activity-details"></div></details></div>';
   query(".workspace").before(activityPanel);
   var mapHeading = query(".map-heading");
   new ResizeObserver(() => workspace.style.setProperty("--toolbar-height", `${mapHeading.offsetHeight}px`)).observe(mapHeading);
@@ -1342,17 +1349,18 @@ ${localized2(item, "note")}`).join("\n\n") || t("\u65E0\u6765\u6E90\u8BC1\u636E"
   if (activityEvents.length) {
     element(mapHeading.firstElementChild, HTMLElement).hidden = true;
     mapHeading.prepend($("activity-mode"));
+    $("activity-mode").after($("activity-meta"));
   }
   required(query(".legend").lastElementChild).before(relationCount);
   query(".activity-toolbar", activityPanel).append($("activity-summary"));
-  var viewModes = { architecture: ["\u5B8C\u6574\u67B6\u6784", "Architecture", "layers"], activity: ["\u66F4\u6539\u89C6\u56FE", "Changes", "focus"], compare: ["\u5E76\u6392\u5BF9\u7167", "Compare", "columns-2"] };
+  var viewModes = { architecture: ["\u5B8C\u6574\u67B6\u6784", "Architecture", "layers"], activity: ["\u66F4\u6539\u89C6\u56FE", "Changes", "focus"] };
   for (const [mode, labels] of Object.entries(viewModes)) {
     const button = document.createElement("button");
     button.type = "button";
     button.dataset.view = mode;
     button.innerHTML = `${icons[labels[2]] || ""}<span>${labels[0]}</span>`;
     button.onclick = () => {
-      if (mode !== "architecture" && mode !== "activity" && mode !== "compare") throw new Error("Unknown view mode.");
+      if (mode !== "architecture" && mode !== "activity") throw new Error("Unknown view mode.");
       activityMode = mode;
       hoveredModuleId = void 0;
       updateActivity();
@@ -1382,6 +1390,18 @@ ${localized2(item, "note")}`).join("\n\n") || t("\u65E0\u6765\u6E90\u8BC1\u636E"
   $("activity-disclosure").ontoggle = () => {
     if (fitting) updateZoom();
   };
+  document.addEventListener("pointerdown", (event) => {
+    const disclosure = $("activity-disclosure");
+    if (document.querySelector("dialog[open]")) return;
+    if (disclosure.open && event.target instanceof Node && !disclosure.contains(event.target)) disclosure.open = false;
+  });
+  document.addEventListener("keydown", (event) => {
+    const disclosure = $("activity-disclosure");
+    if (event.key !== "Escape" || !disclosure.open || document.querySelector("dialog[open]")) return;
+    disclosure.open = false;
+    query("summary", disclosure).focus();
+    event.stopImmediatePropagation();
+  }, true);
   var mapPanes = document.createElement("div");
   mapPanes.className = "map-panes";
   viewport.before(mapPanes);
@@ -1390,47 +1410,127 @@ ${localized2(item, "note")}`).join("\n\n") || t("\u65E0\u6765\u6E90\u8BC1\u636E"
   changePane.innerHTML = '<h2 class="pane-title" id="change-title"></h2>';
   changePane.append(viewport);
   mapPanes.append(changePane);
-  if (activityEvents.length) {
-    const overviewPane = document.createElement("section");
-    overviewPane.id = "overview-pane";
-    overviewPane.className = "map-pane";
-    overviewPane.hidden = true;
-    overviewPane.innerHTML = '<h2 class="pane-title" id="overview-title"></h2><div class="map-scroll" id="overview-scroll"><div id="overview-stage"></div></div>';
-    mapPanes.prepend(overviewPane);
-    const clone = $("map").cloneNode(true);
-    if (!(clone instanceof HTMLElement)) throw new Error("Invalid map clone.");
-    const overview = clone;
-    for (const element2 of [overview, ...overview.querySelectorAll("[id]")]) element2.id = `overview-${element2.id}`;
-    overview.querySelectorAll("[marker-end]").forEach((edge) => edge.setAttribute("marker-end", "url(#overview-arrow)"));
-    overview.querySelectorAll(".flow-dot").forEach((dot) => dot.remove());
-    $("overview-stage").append(overview);
-    overview.querySelectorAll(".node").forEach((button) => {
-      button.onclick = () => {
-        if (constraintPanelOpen) {
-          constraintFilter = "module";
-          selectedConstraintId = void 0;
-        }
-        select(required(map.modules.find((module) => module.id === button.dataset.module)));
+  var impactPanel = document.createElement("section");
+  impactPanel.id = "impact-panel";
+  impactPanel.hidden = true;
+  mapPanes.append(impactPanel);
+  var impactOverride;
+  var impactActive = false;
+  function syncSidePanel() {
+    const show = impactActive && !workspace.classList.contains("inspector-open");
+    impactPanel.hidden = !show;
+    mapPanes.classList.toggle("impact", show);
+  }
+  var impactToggle = document.createElement("button");
+  impactToggle.type = "button";
+  impactToggle.id = "impact-toggle";
+  impactToggle.onclick = () => {
+    impactOverride = impactToggle.getAttribute("aria-pressed") !== "true";
+    hoveredModuleId = void 0;
+    updateActivity();
+    updateFlow();
+  };
+  $("activity-meta").append(impactToggle);
+  function impactNeighbors(event) {
+    const neighbors = /* @__PURE__ */ new Map();
+    for (const relation of map.relationships) {
+      const fromIn = event.scope.includes(relation.from), toIn = event.scope.includes(relation.to);
+      if (fromIn === toIn) continue;
+      const outside = fromIn ? relation.to : relation.from;
+      neighbors.set(outside, [...neighbors.get(outside) ?? [], relation]);
+    }
+    return neighbors;
+  }
+  var impactHelpOpen = false;
+  function renderImpact(event, neighbors) {
+    const zh = isChinese2();
+    const moduleById = (id) => required(map.modules.find((module) => module.id === id));
+    const heading = document.createElement("div");
+    heading.className = "impact-heading";
+    const title = document.createElement("h2");
+    title.textContent = zh ? "\u5F71\u54CD\u8303\u56F4" : "Impact";
+    const help = document.createElement("div");
+    help.id = "impact-help";
+    help.className = "impact-help";
+    help.hidden = !impactHelpOpen;
+    for (const text of zh ? ["\u4EE5\u8BA1\u5212\u8303\u56F4\u4E3A\u4E2D\u5FC3\uFF0C\u5217\u51FA\u4E0E\u5B83\u76F4\u63A5\u76F8\u8FDE\u3001\u4F46\u6CA1\u6709\u58F0\u660E\u7684\u6A21\u5757\u3002\u8FD9\u4E9B\u6A21\u5757\u53EF\u80FD\u53D7\u8FD9\u6B21\u4FEE\u6539\u5F71\u54CD\uFF0C\u8BF7\u786E\u8BA4\u662F\u5426\u9700\u8981\u7EB3\u5165\u8303\u56F4\u3002", "\u5173\u7CFB\u6765\u81EA\u67B6\u6784\u56FE\uFF0C\u4E0D\u4EE3\u8868\u5DF2\u6838\u9A8C\u7684\u8FD0\u884C\u65F6\u4F9D\u8D56\u3002"] : ["Lists modules directly connected to the planned scope but not declared in it. They may be affected by this change; confirm whether they belong in scope.", "Relationships come from the architecture map, not verified runtime dependencies."]) {
+      const line = document.createElement("p");
+      line.textContent = text;
+      help.append(line);
+    }
+    const info = document.createElement("button");
+    info.type = "button";
+    info.className = "impact-info";
+    info.innerHTML = iconMarkup("info");
+    info.title = info.ariaLabel = zh ? "\u8BF4\u660E" : "About this panel";
+    info.setAttribute("aria-controls", help.id);
+    info.setAttribute("aria-expanded", String(impactHelpOpen));
+    info.onclick = () => {
+      impactHelpOpen = !impactHelpOpen;
+      help.hidden = !impactHelpOpen;
+      info.setAttribute("aria-expanded", String(impactHelpOpen));
+    };
+    heading.append(title, info);
+    const section = (title2, count) => {
+      const block = document.createElement("div");
+      block.className = "impact-section";
+      const label = document.createElement("div");
+      label.className = "impact-label";
+      label.textContent = `${title2} \xB7 ${count}`;
+      block.append(label);
+      return block;
+    };
+    const moduleRow = (id, kind) => {
+      const module = moduleById(id);
+      const row = document.createElement("button");
+      row.type = "button";
+      row.className = `impact-row ${kind}`;
+      row.dataset.module = id;
+      row.dataset.tone = roles[module.role || "generic"].tone;
+      const name = document.createElement("strong");
+      name.textContent = localized2(module, "name");
+      row.append(name);
+      if (kind === "scope" && event.targets.includes(id)) {
+        const tag = document.createElement("span");
+        tag.className = "impact-tag";
+        tag.textContent = zh ? "\u5F53\u524D\u76EE\u6807" : "Current target";
+        row.append(tag);
+      }
+      for (const relation of kind === "neighbor" ? required(neighbors.get(id)) : []) {
+        const line = document.createElement("small");
+        line.textContent = `${localized2(moduleById(relation.from), "name")} \u2192 ${localized2(moduleById(relation.to), "name")} \xB7 ${localized2(relation, "label")}`;
+        row.append(line);
+      }
+      row.onclick = () => {
+        select(module);
         setInspector(true);
       };
-      button.onpointerenter = (event) => {
-        if (event.pointerType !== "touch") {
-          hoveredModuleId = button.dataset.module;
-          updateFlow();
-        }
+      row.onpointerenter = () => {
+        hoveredModuleId = id;
+        updateFlow();
       };
-      button.onpointerleave = () => {
+      row.onpointerleave = () => {
         hoveredModuleId = void 0;
         updateFlow();
       };
-    });
-    for (const [source, destination] of [[viewport, $("overview-scroll")], [$("overview-scroll"), viewport]]) {
-      source.addEventListener("scroll", () => {
-        if (activityMode !== "compare") return;
-        if (destination.scrollLeft !== source.scrollLeft) destination.scrollLeft = source.scrollLeft;
-        if (destination.scrollTop !== source.scrollTop) destination.scrollTop = source.scrollTop;
-      });
+      return row;
+    };
+    const scope = section(zh ? "\u8BA1\u5212\u8303\u56F4" : "Planned scope", event.scope.length);
+    scope.append(...event.scope.map((id) => moduleRow(id, "scope")));
+    const adjacent = section(zh ? "\u76F4\u63A5\u76F8\u8FDE \xB7 \u672A\u58F0\u660E" : "Directly connected \xB7 not declared", neighbors.size);
+    adjacent.append(...[...neighbors.keys()].map((id) => moduleRow(id, "neighbor")));
+    if (!neighbors.size) {
+      const empty = document.createElement("p");
+      empty.textContent = zh ? "\u8303\u56F4\u4E4B\u5916\u6CA1\u6709\u76F4\u63A5\u76F8\u8FDE\u7684\u6A21\u5757\u3002" : "No modules outside the scope connect to it directly.";
+      adjacent.append(empty);
     }
+    const others = map.modules.filter((module) => !event.scope.includes(module.id) && !neighbors.has(module.id));
+    const unrelated = section(zh ? "\u65E0\u76F4\u63A5\u5173\u7CFB" : "Not connected", others.length);
+    const names = document.createElement("p");
+    names.className = "impact-names";
+    names.textContent = others.map((module) => localized2(module, "name")).join(zh ? "\u3001" : ", ") || "-";
+    unrelated.append(names);
+    impactPanel.replaceChildren(heading, help, scope, adjacent, unrelated);
   }
   for (const scroll of mapPanes.querySelectorAll(".map-scroll")) {
     scroll.tabIndex = 0;
@@ -1453,56 +1553,29 @@ ${localized2(item, "note")}`).join("\n\n") || t("\u65E0\u6765\u6E90\u8BC1\u636E"
       if (scroll.hasPointerCapture(event.pointerId)) scroll.releasePointerCapture(event.pointerId);
     });
   }
-  function syncOverview() {
-    const overview = document.getElementById("overview-map");
-    if (!overview) return;
-    for (const button of overview.querySelectorAll(".node")) {
-      const source = required(buttons.get(required(button.dataset.module)));
-      button.className = source.className;
-      button.classList.remove("activity-outside", "activity-scope", "activity-target", "context-muted");
-      for (const attr of ["title", "aria-label", "aria-pressed"]) {
-        if (source.hasAttribute(attr)) button.setAttribute(attr, required(source.getAttribute(attr)));
-      }
-      if (button.innerHTML !== source.innerHTML) button.innerHTML = source.innerHTML;
-    }
-    overview.querySelectorAll(".group-label").forEach((label, index) => {
-      label.textContent = required(groupFrames[index]).label.textContent;
-      label.title = required(groupFrames[index]).label.title;
-    });
-    overview.querySelectorAll(".edge").forEach((edge, index) => {
-      edge.setAttribute("class", required(edges[index]).path.getAttribute("class") ?? "");
-      edge.classList.remove("activity-edge-outside", "context-muted");
-      edge.style.display = required(edges[index]).path.style.display;
-      required(edge.querySelector("title")).textContent = required(required(edges[index]).path.querySelector("title")).textContent;
-    });
-    $("overview-connections").style.setProperty("--flow-accent", $("connections").style.getPropertyValue("--flow-accent"));
-  }
   function updateActivity() {
     const zh = isChinese2();
     updateConstraints();
-    document.body.classList.toggle("show-activity-context", activityMode === "activity");
+    document.body.classList.toggle("show-activity-context", activityEvents.length > 0);
     $("change-title").textContent = viewModes[activityMode === "architecture" ? "architecture" : "activity"][zh ? 0 : 1];
     viewport.setAttribute("aria-label", $("change-title").textContent);
     if (!activityEvents.length) return;
     const event = required(activityEvents[activityIndex]);
     const active = activityMode !== "architecture";
-    const context = $("activity-context");
-    query(".activity-toolbar", activityPanel).hidden = activityMode !== "activity";
+    query(".activity-toolbar", activityPanel).hidden = false;
     const terminalPhase = ["completed", "failed", "cancelled"].includes(event.phase);
     const targetLabel = terminalPhase ? zh ? "\u65E0\u5F53\u524D\u76EE\u6807" : "No current targets" : event.phase === "planned" ? zh ? "\u4E0B\u4E00\u6B65\u76EE\u6807" : "Next-step targets" : event.phase === "verifying" ? zh ? "\u9A8C\u8BC1\u76EE\u6807" : "Verification targets" : zh ? "\u4FEE\u6539\u76EE\u6807" : "Edit targets";
-    mapPanes.classList.toggle("compare", activityMode === "compare");
-    $("overview-pane").hidden = activityMode !== "compare";
-    $("overview-title").textContent = viewModes.architecture[zh ? 0 : 1];
-    $("overview-scroll").setAttribute("aria-label", $("overview-title").textContent);
     $("activity-mode").setAttribute("aria-label", zh ? "\u89C6\u56FE" : "View");
     for (const button of $("activity-mode").querySelectorAll("button")) {
       const mode = button.dataset.view;
-      const labels = mode === "activity" || mode === "compare" ? viewModes[mode] : viewModes.architecture;
+      const labels = mode === "activity" ? viewModes[mode] : viewModes.architecture;
       query("span", button).textContent = required(labels[zh ? 0 : 1]) || labels[0];
       button.setAttribute("aria-pressed", String(button.dataset.view === activityMode));
     }
     activityStep.setAttribute("aria-label", zh ? "\u6D3B\u52A8\u5386\u53F2" : "Activity history");
-    activityStep.replaceChildren(...activityEvents.map((record, index) => new Option(`${record.sequence} \xB7 ${record.taskId} \xB7 ${phaseNames[record.phase][zh ? 0 : 1]}`, String(index))));
+    const multiTask = new Set(activityEvents.map((record) => record.taskId)).size > 1;
+    activityStep.replaceChildren(...activityEvents.map((record, index) => new Option(`${index + 1} / ${activityEvents.length}${multiTask ? ` \xB7 ${record.taskId}` : ""} \xB7 ${phaseNames[record.phase][zh ? 0 : 1]}`, String(index))));
+    activityStep.title = event.taskId;
     activityStep.value = String(activityIndex);
     for (const [id, labels] of Object.entries({ "activity-prev": ["\u4E0A\u4E00\u6761", "Previous record"], "activity-next": ["\u4E0B\u4E00\u6761", "Next record"], "activity-latest": ["\u6700\u65B0\u8BB0\u5F55", "Latest record"] })) $(id).title = $(id).ariaLabel = required(labels[zh ? 0 : 1]);
     buttonById("activity-prev").disabled = activityIndex === 0;
@@ -1513,20 +1586,46 @@ ${localized2(item, "note")}`).join("\n\n") || t("\u65E0\u6765\u6E90\u8BC1\u636E"
     query("header .simulation").textContent = source;
     const names = (ids) => ids.map((id) => localized2(required(map.modules.find((module) => module.id === id)), "name")).join(", ");
     $("activity-summary").textContent = localized2(event, "reason");
-    $("activity-context-label").textContent = zh ? "\u5F53\u524D\u4FEE\u6539" : "Current change";
-    $("activity-context-summary").textContent = localized2(event, "reason");
-    const contextDetails = $("activity-context-details");
-    contextDetails.replaceChildren();
-    query("summary", $("activity-disclosure")).textContent = `${targetLabel}${terminalPhase ? "" : ` \xB7 ${event.targets.length}`} \xB7 ${zh ? "\u8BE6\u60C5" : "Details"}`;
+    query("summary", $("activity-disclosure")).textContent = zh ? "\u8BE6\u60C5" : "Details";
+    $("activity-phase").textContent = required(phaseNames[event.phase][zh ? 0 : 1]);
+    $("activity-phase").dataset.phase = event.phase;
+    const chips = $("activity-targets");
+    const chipsLabel = document.createElement("span");
+    chipsLabel.className = "activity-targets-label";
+    chipsLabel.textContent = targetLabel;
+    chips.replaceChildren(chipsLabel);
+    for (const id of terminalPhase ? [] : event.targets) {
+      const module = required(map.modules.find((item) => item.id === id));
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "activity-chip";
+      chip.dataset.tone = roles[module.role || "generic"].tone;
+      chip.textContent = localized2(module, "name");
+      chip.onclick = () => {
+        select(module);
+        setInspector(true);
+      };
+      chip.onpointerenter = () => {
+        hoveredModuleId = id;
+        updateFlow();
+      };
+      chip.onpointerleave = () => {
+        hoveredModuleId = void 0;
+        updateFlow();
+      };
+      chips.append(chip);
+    }
     const details = $("activity-details");
     details.replaceChildren();
     const fields = [
+      // Targets are already shown as chips beside the toggle.
       [zh ? "\u8BA1\u5212\u8303\u56F4" : "Planned scope", names(event.scope)],
-      [targetLabel, terminalPhase ? "-" : names(event.targets)],
       [zh ? "\u672C\u6B65\u9AA4\u6587\u4EF6\uFF08\u58F0\u660E\uFF09" : "Step files (declared)", event.files.join("\n") || "-"],
       [zh ? "\u672A\u5F52\u5C5E\u6587\u4EF6" : "Unmapped files", event.unmappedFiles.join("\n") || "-"],
       [zh ? "\u9A8C\u8BC1\u8BB0\u5F55" : "Checks", event.checks.map((check) => `${check.command}
-${check.status} \xB7 exit ${check.exitCode ?? "-"} \xB7 ${localized2(check, "summary")}`).join("\n\n") || (zh ? "\u672A\u8BB0\u5F55\u9A8C\u8BC1\u7ED3\u679C" : "No checks recorded")]
+${check.status} \xB7 exit ${check.exitCode ?? "-"} \xB7 ${localized2(check, "summary")}`).join("\n\n") || (zh ? "\u672A\u8BB0\u5F55\u9A8C\u8BC1\u7ED3\u679C" : "No checks recorded")],
+      [zh ? "Git \u63D0\u4EA4" : "Git commit", event.gitCommit || "-"],
+      [zh ? "\u53D1\u751F\u65F6\u95F4" : "Timestamp", ("timestamp" in event && typeof event.timestamp === "string" ? event.timestamp : "") || "-"]
     ];
     for (const [label, value] of fields) {
       const field = document.createElement("div");
@@ -1537,36 +1636,57 @@ ${check.status} \xB7 exit ${check.exitCode ?? "-"} \xB7 ${localized2(check, "sum
       field.append(heading, content);
       details.append(field);
     }
-    const contextFields = [
-      [targetLabel, terminalPhase ? "-" : names(event.targets)],
-      [zh ? "\u8BA1\u5212\u8303\u56F4" : "Planned scope", names(event.scope)],
-      [zh ? "\u6587\u4EF6" : "Files", event.files.join("\n") || "-"],
-      [zh ? "Git \u63D0\u4EA4" : "Git commit", event.gitCommit || "-"],
-      [zh ? "\u53D1\u751F\u65F6\u95F4" : "Timestamp", ("timestamp" in event && typeof event.timestamp === "string" ? event.timestamp : "") || "-"],
-      [zh ? "\u9A8C\u8BC1" : "Checks", event.checks.map((check) => `${check.status} \xB7 ${localized2(check, "summary")}`).join("\n") || (zh ? "\u672A\u8BB0\u5F55" : "Not recorded")]
-    ];
-    for (const [label, value] of contextFields) {
-      const field = document.createElement("div");
-      const heading = document.createElement("strong");
-      heading.textContent = label;
-      const content = document.createElement("div");
-      content.textContent = value;
-      field.append(heading, content);
-      contextDetails.append(field);
-    }
-    context.hidden = activityMode !== "activity";
-    $("activity-summary").hidden = $("activity-disclosure").hidden = activityMode !== "activity";
+    $("activity-summary").hidden = false;
+    $("activity-meta").hidden = activityMode !== "activity";
+    const phaseLabel = required(phaseNames[event.phase][zh ? 0 : 1]);
+    const impact = activityMode === "activity" && (impactOverride ?? event.phase === "planned");
+    impactActive = impact;
+    syncSidePanel();
+    impactToggle.setAttribute("aria-pressed", String(impact));
+    impactToggle.textContent = zh ? "\u8303\u56F4\u5916\u5F71\u54CD" : "Outside-scope impact";
+    impactToggle.title = zh ? "\u6807\u51FA\u4E0E\u8BA1\u5212\u8303\u56F4\u76F4\u63A5\u76F8\u8FDE\u4F46\u672A\u58F0\u660E\u7684\u6A21\u5757" : "Mark modules directly connected to the planned scope but not declared";
+    const neighbors = impact ? impactNeighbors(event) : /* @__PURE__ */ new Map();
+    if (impact) renderImpact(event, neighbors);
     for (const [id, button] of buttons) {
+      const inScope = event.scope.includes(id);
       const target = !terminalPhase && event.targets.includes(id);
-      button.classList.toggle("activity-outside", active && !target);
-      button.classList.toggle("activity-scope", active && event.scope.includes(id));
+      button.classList.toggle("activity-outside", active && !target && !(impact && (inScope || neighbors.has(id))));
+      button.classList.toggle("activity-scope", active && inScope);
       button.classList.toggle("activity-target", active && target);
+      button.classList.toggle("impact-neighbor", impact && neighbors.has(id));
+      button.querySelector(".change-callout")?.remove();
+      const module = required(map.modules.find((item) => item.id === id));
+      const owned = target ? event.files.filter((file) => module.ownership.some((owner) => file === owner.path || file.startsWith(`${owner.path.replace(/\/$/, "")}/`))) : [];
+      if (!owned.length) continue;
+      const callout = document.createElement("span");
+      callout.className = "change-callout";
+      callout.dataset.phase = event.phase;
+      callout.textContent = `${phaseLabel} \xB7 ${owned.map((file) => file.split("/").at(-1)).join(", ")}`;
+      callout.title = owned.join("\n");
+      button.append(callout);
     }
-    for (const edge of edges) edge.path.classList.toggle("activity-edge-outside", active && (terminalPhase || !event.targets.includes(edge.relation.from) && !event.targets.includes(edge.relation.to)));
+    const inChange = (id) => !terminalPhase && event.scope.includes(id);
+    for (const edge of edges) {
+      const { from, to } = edge.relation;
+      const touchesTarget = !terminalPhase && (event.targets.includes(from) || event.targets.includes(to));
+      const fromIn = event.scope.includes(from), toIn = event.scope.includes(to);
+      const core = impact ? fromIn && toIn : active && touchesTarget && inChange(from) && inChange(to);
+      const boundary = impact && fromIn !== toIn;
+      edge.path.classList.toggle("activity-edge-outside", active && (impact ? !core && !boundary : !touchesTarget));
+      edge.path.classList.toggle("activity-edge-core", core);
+      edge.path.classList.toggle("impact-edge", boundary);
+      edge.path.setAttribute("marker-end", core ? "url(#arrow-change)" : "url(#arrow)");
+      edge.label.textContent = localized2(edge.relation, "label");
+      edge.label.classList.toggle("visible", core);
+      const middleY = edge.path.getPointAtLength(edge.path.getTotalLength() / 2).y;
+      const short = core && edge.label.getComputedTextLength() + 16 > edge.path.getTotalLength();
+      edge.label.setAttribute("y", String(short ? middleY - 44 : middleY - 6));
+    }
     const legend = required(query(".legend").lastElementChild);
     legend.replaceChildren();
     if (active) {
-      for (const [kind, label] of [["planned", zh ? "\u8BA1\u5212\u8303\u56F4" : "Planned scope"], ["active", targetLabel], ["", zh ? "\u975E\u5F53\u524D\u76EE\u6807" : "Other modules"]]) {
+      const entries = impact ? [["planned", zh ? "\u8BA1\u5212\u8303\u56F4" : "Planned scope"], ["neighbor", zh ? "\u76F4\u63A5\u76F8\u8FDE \xB7 \u672A\u58F0\u660E" : "Connected \xB7 not declared"], ["", zh ? "\u65E0\u76F4\u63A5\u5173\u7CFB" : "Not connected"]] : [["planned", zh ? "\u8BA1\u5212\u8303\u56F4" : "Planned scope"], ["active", targetLabel], ["", zh ? "\u975E\u5F53\u524D\u76EE\u6807" : "Other modules"]];
+      for (const [kind, label] of entries) {
         const entry = document.createElement("span");
         const swatch = document.createElement("i");
         swatch.className = kind;
@@ -1574,9 +1694,7 @@ ${check.status} \xB7 exit ${check.exitCode ?? "-"} \xB7 ${localized2(check, "sum
         legend.append(entry);
       }
     } else legend.textContent = source;
-    syncOverview();
     updateZoom();
-    if (activityMode === "compare") $("overview-scroll").scrollTo(viewport.scrollLeft, viewport.scrollTop);
   }
   var constraintRules = map.constraints || [];
   var constraintPanelOpen = false;
@@ -1871,12 +1989,12 @@ ${localized2(check, "summary")}`);
   guideDialog.innerHTML = '<div id="guide-spot" aria-hidden="true"></div><section id="guide-card"><div class="guide-top"><span id="guide-count" aria-live="polite"></span><button id="guide-close">\xD7</button></div><progress id="guide-progress"></progress><h2 id="guide-title"></h2><p id="guide-copy"></p><div class="guide-actions"><button id="guide-prev"></button><button id="guide-skip"></button><button id="guide-next" class="primary"></button></div></section>';
   document.body.append(guideDialog);
   var hasConstraintGuide = Boolean(DATA.constraintView);
-  var guideSteps = activityEvents.length ? ["architecture", ...hasConstraintGuide ? ["constraints"] : [], "activity", "compare", "details", "history"] : ["architecture", ...hasConstraintGuide ? ["constraints"] : [], "details"];
+  var guideSteps = activityEvents.length ? ["architecture", ...hasConstraintGuide ? ["constraints"] : [], "activity", "impact", "details", "history"] : ["architecture", ...hasConstraintGuide ? ["constraints"] : [], "details"];
   var guideCopy = {
     architecture: ["\u5B8C\u6574\u67B6\u6784", "\u4E86\u89E3\u7CFB\u7EDF\u6709\u54EA\u4E9B\u6A21\u5757\uFF0C\u4EE5\u53CA\u5B83\u4EEC\u5982\u4F55\u8FDE\u63A5\u3002\u5206\u7EC4\u5E95\u8272\u8868\u793A\u804C\u8D23\u7C7B\u522B\uFF0C\u4E0D\u8868\u793A\u4FEE\u6539\u72B6\u6001\u3002", "Architecture", "See the system modules and their connections. Group backgrounds classify responsibilities, not change status."],
     constraints: ["\u67E5\u770B\u7EA6\u675F", "\u7EA6\u675F\u89C6\u56FE\u628A\u5DF2\u5BA1\u67E5\u7684\u89C4\u5219\u6309\u4E3B\u9898\u548C\u6765\u6E90\u5C55\u5F00\uFF1B\u989C\u8272\u8868\u793A\u9002\u7528\u89D2\u8272\uFF0C\u4E0D\u4EE3\u8868\u901A\u8FC7\u6216\u5931\u8D25\u3002\u70B9\u51FB\u89C4\u5219\u53EF\u9605\u8BFB\u9002\u7528\u6761\u4EF6\u3001\u89E3\u91CA\u3001\u9A8C\u8BC1\u65B9\u5F0F\u548C\u539F\u6587\u4F9D\u636E\u3002", "Inspect constraints", "The constraints view groups reviewed rules by topic and source. Colors show applicable roles, not pass or fail. Select a rule to read its condition, explanation, verification and source evidence."],
     activity: ["\u672C\u6B21\u4FEE\u6539", "\u4EAE\u8D77\u7684\u662F\u6240\u9009\u6B65\u9AA4\u7684\u76EE\u6807\uFF0C\u7070\u8272\u6A21\u5757\u4E0D\u662F\u5F53\u524D\u76EE\u6807\uFF1B\u9A8C\u8BC1\u9636\u6BB5\u7684\u4EAE\u8D77\u8868\u793A\u9A8C\u8BC1\u76EE\u6807\u3002\u7EC8\u6001\u4E0D\u518D\u9AD8\u4EAE\u76EE\u6807\u3002", "Current changes", "Bright modules are targets of the selected step; gray modules are not. During verification, highlights mean verification targets. Terminal steps clear highlights."],
-    compare: ["\u540C\u65F6\u5BF9\u7167", "\u5B8C\u6574\u67B6\u6784\u4E0E\u66F4\u6539\u89C6\u56FE\u5E76\u6392\u5C55\u793A\uFF0C\u9009\u62E9\u3001\u7F29\u653E\u548C\u6EDA\u52A8\u4FDD\u6301\u8054\u52A8\u3002\u7A84\u5C4F\u65F6\u4E0A\u4E0B\u6392\u5217\u3002", "Compare views", "Compare architecture and changes with linked selection, zoom and scrolling. Narrow screens stack the views."],
+    impact: ["\u8303\u56F4\u5916\u5F71\u54CD", "\u6807\u51FA\u4E0E\u8BA1\u5212\u8303\u56F4\u76F4\u63A5\u76F8\u8FDE\u3001\u4F46\u6CA1\u6709\u58F0\u660E\u7684\u6A21\u5757\uFF0C\u7528\u6765\u68C0\u67E5\u8303\u56F4\u662F\u5426\u9057\u6F0F\u3002\u8BA1\u5212\u6B65\u9AA4\u9ED8\u8BA4\u6253\u5F00\u3002", "Outside-scope impact", "Marks modules connected to the planned scope but not declared, to check for missed scope. On by default for planned steps."],
     details: ["\u67E5\u770B\u4F9D\u636E", "\u70B9\u51FB\u6A21\u5757\u53EF\u67E5\u770B\u804C\u8D23\u3001\u6587\u4EF6\u5F52\u5C5E\u4E0E\u6E90\u7801\u8BC1\u636E\u3002\u60AC\u6D6E\u6A21\u5757\u53EF\u8FFD\u8E2A\u76F4\u63A5\u8FDE\u63A5\uFF0C\u5DE5\u5177\u680F\u53EF\u5207\u6362\u5168\u90E8\u5173\u7CFB\u6216\u9002\u914D\u5168\u56FE\u3002", "Inspect evidence", "Select a module for responsibilities, file ownership and source evidence. Hover to trace direct connections; use the toolbar for all relations or fit to view."],
     history: ["\u8DDF\u8E2A\u8FC7\u7A0B", "\u5386\u53F2\u8BB0\u5F55\u5C55\u793A\u8BA1\u5212\u3001\u7F16\u8F91\u548C\u9A8C\u8BC1\u6B65\u9AA4\u3002\u5C55\u5F00\u8BE6\u60C5\u67E5\u770B\u6587\u4EF6\u548C\u68C0\u67E5\u7ED3\u679C\uFF1B\u4EFB\u52A1\u5B8C\u6210\u4E0D\u4EE3\u8868\u68C0\u67E5\u901A\u8FC7\u3002", "Follow progress", "History shows planning, editing and verification steps. Expand details for files and check results; completion alone does not prove checks passed."]
   };
@@ -1887,8 +2005,8 @@ ${localized2(check, "summary")}`);
   var guideViewState = {
     architecture: { mode: "architecture", inspector: false, history: false },
     constraints: { mode: "architecture", inspector: false, history: false },
-    activity: { mode: "activity", inspector: false, history: false },
-    compare: { mode: "compare", inspector: false, history: false },
+    activity: { mode: "activity", inspector: false, history: false, impact: false },
+    impact: { mode: "activity", inspector: false, history: false, impact: true },
     details: { mode: "architecture", inspector: true, history: false },
     history: { mode: "activity", inspector: false, history: true }
   };
@@ -1953,7 +2071,8 @@ ${localized2(check, "summary")}`);
     hoveredModuleId = void 0;
     setInspector(state.inspector);
     activityMode = state.mode;
-    if (step === "activity") {
+    impactOverride = state.impact ?? saved.impactOverride;
+    if (step === "activity" || step === "impact") {
       const plan = activityEvents.findIndex((event) => event.phase === "planned" && event.targets.length);
       activityIndex = plan >= 0 ? plan : saved.index;
     } else activityIndex = saved.index;
@@ -1963,7 +2082,7 @@ ${localized2(check, "summary")}`);
     updateFlow();
     updateZoom();
     if (step === "details") select(map.modules.find((module) => module.id === saved.selected) || required(map.modules[0]));
-    guideTarget = step === "constraints" ? query("#project-views") || query("#show-constraints") : step === "details" ? inspector : step === "history" ? activityPanel : step === "compare" ? $("activity-mode") : step === "activity" ? viewport : activityEvents.length ? query('[data-view="architecture"]') : viewport;
+    guideTarget = step === "constraints" ? query("#project-views") || query("#show-constraints") : step === "details" ? inspector : step === "history" ? activityPanel : step === "impact" ? impactToggle : step === "activity" ? viewport : activityEvents.length ? query('[data-view="architecture"]') : viewport;
     guideTarget.scrollIntoView({ block: "nearest", behavior: "instant" });
     guideLabels();
     positionGuide();
@@ -1989,7 +2108,7 @@ ${localized2(check, "summary")}`);
   function startGuide() {
     if (guideDialog.open) return;
     dismissGuideInvite();
-    guideSaved = { mode: activityMode, index: activityIndex, selected: selectedModuleId, inspector: workspace.classList.contains("inspector-open"), zoom, fitting, disclosure: $("activity-disclosure").open, focus: document.activeElement, x: scrollX, y: scrollY, constraints: { open: constraintPanelOpen, selected: selectedConstraintId, filter: constraintFilter }, projectView: new URLSearchParams(location.hash.slice(1)).get("view") === "constraints" ? "constraints" : "architecture", panes: [...mapPanes.querySelectorAll(".map-scroll")].map((el) => [el, el.scrollLeft, el.scrollTop]) };
+    guideSaved = { mode: activityMode, impactOverride, index: activityIndex, selected: selectedModuleId, inspector: workspace.classList.contains("inspector-open"), zoom, fitting, disclosure: $("activity-disclosure").open, focus: document.activeElement, x: scrollX, y: scrollY, constraints: { open: constraintPanelOpen, selected: selectedConstraintId, filter: constraintFilter }, projectView: new URLSearchParams(location.hash.slice(1)).get("view") === "constraints" ? "constraints" : "architecture", panes: [...mapPanes.querySelectorAll(".map-scroll")].map((el) => [el, el.scrollLeft, el.scrollTop]) };
     guideIndex = 0;
     constraintPanelOpen = false;
     guideDialog.showModal();
@@ -2003,6 +2122,7 @@ ${localized2(check, "summary")}`);
     const saved = required(guideSaved);
     if (DATA.constraintView) element(query(`#project-views button:nth-child(${saved.projectView === "constraints" ? 2 : 1})`), HTMLButtonElement).click();
     activityMode = saved.mode;
+    impactOverride = saved.impactOverride;
     activityIndex = saved.index;
     constraintPanelOpen = saved.constraints.open;
     selectedConstraintId = saved.constraints.selected;

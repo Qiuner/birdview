@@ -51,8 +51,8 @@ try {
   await page.locator('#activity-next').click();
   assert.doesNotMatch(present(await page.locator('.constraint-detail').textContent()), /模拟方案/);
   assert.match(present(await page.locator('.constraint-detail').textContent()), /未验证/);
-  await page.locator('[data-view="compare"]').click();
-  assert.equal(await page.locator('#overview-nodes .constraint-highlight').count(), 3);
+  await page.locator('[data-view="activity"]').click();
+  assert.equal(await page.locator('#nodes .constraint-highlight').count(), 3);
   await page.locator('[data-view="architecture"]').click();
   assert.doesNotMatch(present(await page.locator('.constraint-detail').textContent()), /本次方案|验证结果/);
   await page.locator('#constraint-filter').selectOption('attention');

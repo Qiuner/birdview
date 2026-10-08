@@ -20,7 +20,7 @@ try {
     await page.goto(pathToFileURL(file).href + '#lang=zh');
     await page.locator('#show-details').click();
     await page.locator('#evidence').evaluate(el => { el.textContent = 'Long evidence\n'.repeat(100); });
-    for (const mode of ['activity', 'compare', 'architecture']) {
+    for (const mode of ['activity', 'architecture']) {
       await page.locator(`[data-view="${mode}"]`).click();
       if (mode !== 'architecture') await page.locator('#activity-disclosure').evaluate(el => { if (!(el instanceof HTMLDetailsElement)) throw new Error("Expected details"); el.open = true; });
       const result = await page.evaluate(() => {

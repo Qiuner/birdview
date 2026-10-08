@@ -23,7 +23,7 @@ export function renderArchitecture(map: unknown, events: readonly unknown[] = []
   const result = validate(map, events);
   if (!result.ok) throw new Error(JSON.stringify(result.errors));
   const architecture = map as Architecture;
-  const icons = Object.fromEntries(['sun', 'moon', 'layers', 'database', 'zoom-in', 'zoom-out', 'maximize', 'scan', 'x', 'panel-right', 'panels-top-left', 'code', 'zap', 'list-ordered', 'shield-check', 'box', 'skip-forward', 'columns-2', 'chevron-left', 'chevron-right'].map((name) => [name, read(`node_modules/lucide-static/icons/${name}.svg`)]));
+  const icons = Object.fromEntries(['sun', 'moon', 'layers', 'database', 'zoom-in', 'zoom-out', 'maximize', 'scan', 'x', 'panel-right', 'panels-top-left', 'code', 'zap', 'list-ordered', 'shield-check', 'box', 'skip-forward', 'chevron-left', 'chevron-right', 'info'].map((name) => [name, read(`node_modules/lucide-static/icons/${name}.svg`)]));
   const brandLogo = dataUrl('assets/brand/logo-192.png', 'image/png');
   const constraintFreshness: ConstraintFreshness | undefined = repository ? inspectConstraintFreshness(architecture, repository) : undefined;
   let constraintView: { graph: ConstraintGraph; snapshot: string; scope: string; rules: Array<{ id: string; modules: string[] }> } | undefined;

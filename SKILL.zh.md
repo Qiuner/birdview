@@ -10,9 +10,11 @@
 
 Birdview 默认 `on-demand`：用户选择技能、点名 Birdview、要求架构图/约束图/更改图，或通过下方评审路线请求架构优化时触发。普通编码、小修复和功能规划默认不触发。如果项目宿主指令文件明确配置 `auto`，则在每次改代码（含小改动）及明确分析涉及模块的规划前介入。已有 `auto` 设置继续有效，`setup` 保留它。遵循 `off`，除非用户在当前任务明确调用。仅讨论技能不代表要求建图。激活并授权编码后，复用或更新地图并在编辑前声明涉及模块。
 
-Codex 使用 `/skills` 选择 Birdview，或输入 `$birdview`。Claude Code 将已安装技能显示为 `/birdview`。其他宿主使用各自的技能选择器或明确要求 Birdview，不假定支持相同斜杠命令。调用只作用于当前任务，不自动延伸到之后所有修改。
+Codex 使用 `/skills` 选择 Birdview，或输入 `$birdview`。独立的环境体检使用 `$birdview-compatibility`，不会启动建图。Claude Code 将这些已安装技能显示为 `/birdview` 和 `/birdview-compatibility`。其他宿主使用各自的技能选择器或明确请求，不假定支持相同斜杠命令。调用只作用于当前任务，不自动延伸到之后所有修改。
 
 切换或查询模式时按[模式说明](references/modes.zh.md)对选定项目根目录运行命令，报告结果后停止，切换本身不启动建图。技能介入后，在建图或分析修改范围前报告已有地图的检查结果。这些是 Agent 指令，不是强制写入拦截。
+
+环境首次配置 Birdview 时，按[技能兼容性体检](references/skill-compatibility.zh.md)运行一次只读的 `skills audit`。根据清单决定需要读取哪些技能正文；重名或宽泛触发词不等于语义冲突。没有用户明确指令，不修改或禁用其他技能。
 
 要求优化架构、评审模块边界或寻找架构重构机会时，直接按[评审流程](references/review-architecture.zh.md)执行，不启动下方默认全项目地图流程，也不要求点名 Birdview。独立入口安装后，Codex 使用 `$birdview-review`，Claude Code 使用 `/birdview-review`。这是单独的按需评审路线，不开启项目自动模式。普通局部重构或讨论如何实现本技能，不算评审请求。两个入口同时被选中时，按这份共享流程只执行一次评审。
 

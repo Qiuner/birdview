@@ -4,26 +4,28 @@ import { fileURLToPath } from 'node:url';
 import { isMainModule } from './main-module.mjs';
 import { validate } from './validate.mjs';
 import { inspectConstraintFreshness } from './constraint-freshness.mjs';
-import { buildConstraintGraph, renderConstraintCatalog } from './render-constraints.mjs';
+import { buildConstraintGraph } from './render-constraints.mjs';
 import type { Architecture } from './contracts/models.mjs';
+import { renderReview, validateReview, verifyReviewQuotes } from './render-review.mjs';
 import type { ConstraintFreshness, ConstraintGraph, ReviewedConstraintCatalog } from './constraint-types.mjs';
 
 export interface RenderOptions {
   simulation?: boolean;
   repository?: string;
   constraintCatalog?: ReviewedConstraintCatalog;
-  constraintSourceHref?: string;
+  reviewHref?: string;
 }
 // Source: src/render.mts. Regenerate scripts/render.mjs with npm run build.
 const root = fileURLToPath(new URL('../', import.meta.url));
 const read = (file: string): string => fs.readFileSync(path.join(root, file), 'utf8').replace(/\r\n?/g, '\n');
 const dataUrl = (file: string, type: string): string => `data:${type};base64,${fs.readFileSync(path.join(root, file)).toString('base64')}`;
 
-export function renderArchitecture(map: unknown, events: readonly unknown[] = [], { simulation = false, repository, constraintCatalog, constraintSourceHref }: RenderOptions = {}): string {
+export function renderArchitecture(map: unknown, events: readonly unknown[] = [], { simulation = false, repository, constraintCatalog, reviewHref }: RenderOptions = {}): string {
   const result = validate(map, events);
   if (!result.ok) throw new Error(JSON.stringify(result.errors));
   const architecture = map as Architecture;
-  const icons = Object.fromEntries(['sun', 'moon', 'layers', 'database', 'zoom-in', 'zoom-out', 'maximize', 'scan', 'x', 'panel-right', 'panels-top-left', 'code', 'zap', 'list-ordered', 'shield-check', 'box', 'skip-forward', 'columns-2', 'chevron-left', 'chevron-right'].map((name) => [name, read(`node_modules/lucide-static/icons/${name}.svg`)]));
+  if (reviewHref && !/^[a-zA-Z0-9%._-]+\.html$/.test(reviewHref)) throw new Error('Review link must be a sibling HTML filename');
+  const icons = Object.fromEntries(['sun', 'moon', 'layers', 'database', 'zoom-in', 'zoom-out', 'maximize', 'scan', 'x', 'panel-right', 'panels-top-left', 'code', 'zap', 'list-ordered', 'shield-check', 'box', 'skip-forward', 'chevron-left', 'chevron-right', 'info'].map((name) => [name, read(`node_modules/lucide-static/icons/${name}.svg`)]));
   const brandLogo = dataUrl('assets/brand/logo-192.png', 'image/png');
   const constraintFreshness: ConstraintFreshness | undefined = repository ? inspectConstraintFreshness(architecture, repository) : undefined;
   let constraintView: { graph: ConstraintGraph; snapshot: string; scope: string; rules: Array<{ id: string; modules: string[] }> } | undefined;
@@ -34,10 +36,10 @@ export function renderArchitecture(map: unknown, events: readonly unknown[] = []
     for (const rule of constraintCatalog.rules) {
       if (rule.modules !== undefined && (!binding || rule.modules.some(id => !architecture.modules.some(module => module.id === id)))) throw new Error(`Invalid module binding: ${rule.id}`);
     }
-    constraintView = { graph: buildConstraintGraph(constraintCatalog, constraintSourceHref ? { sourceHref: constraintSourceHref } : {}), snapshot: constraintCatalog.project.revision,
+    constraintView = { graph: buildConstraintGraph(constraintCatalog), snapshot: constraintCatalog.project.revision,
       scope: constraintCatalog.ruleReview.scope, rules: constraintCatalog.rules.map(({ id, modules = [] }) => ({ id, modules })) };
   }
-  const data = JSON.stringify({ map: architecture, icons, events, simulation, brandLogo, constraintFreshness, constraintView }).replace(/</g, '\\u003c');
+  const data = JSON.stringify({ map: architecture, icons, events, simulation, brandLogo, constraintFreshness, constraintView, ...(reviewHref ? { reviewHref } : {}) }).replace(/</g, '\\u003c');
   return read('assets/architecture.html')
     .replace('/* BIRDVIEW_THEME */', () => read('assets/theme.js'))
     .replace('<head>', () => `<head>\n<!--\n${read('LICENSE')}\n${read('THIRD_PARTY_NOTICES')}\n-->`)
@@ -52,6 +54,17 @@ export function renderArchitecture(map: unknown, events: readonly unknown[] = []
 if (isMainModule(import.meta.url)) {
   try {
     const args = process.argv.slice(2);
+    let review: unknown;
+    let reviewInput: string | undefined;
+    const reviewIndex = args.indexOf('--review');
+    if (reviewIndex !== -1) {
+      const file = args[reviewIndex + 1];
+      if (!file || file.startsWith('--')) throw new Error('--review requires review.json');
+      review = JSON.parse(fs.readFileSync(file, 'utf8'));
+      reviewInput = file;
+      validateReview(review);
+      args.splice(reviewIndex, 2);
+    }
     let repository: string | undefined;
     let constraintCatalog: ReviewedConstraintCatalog | undefined;
     const constraintsIndex = args.indexOf('--constraints');
@@ -77,12 +90,31 @@ if (isMainModule(import.meta.url)) {
       try { return JSON.parse(line); } catch { throw new Error(`Invalid JSON in activity record ${i + 1}.`); }
     }) : [];
     const map: unknown = JSON.parse(fs.readFileSync(input, 'utf8'));
-    const sourceOutput = output.replace(/\.html$/i, '.sources.html');
-    const options: RenderOptions = { simulation, ...(repository ? { repository } : {}), ...(constraintCatalog ? { constraintCatalog, constraintSourceHref: encodeURIComponent(path.basename(sourceOutput)) } : {}) };
+    const reviewOutput = output.replace(/\.html$/i, '.review.html');
+    if (reviewInput && [output, reviewOutput].some(file => [input, activity, reviewInput].some(source => source && path.resolve(source).toLowerCase() === path.resolve(file).toLowerCase()))) throw new Error('Review outputs must not overwrite input files');
+    let reviewHtml: string | undefined;
+    if (review !== undefined) {
+      validateReview(review);
+      const mapResult = validate(map);
+      if (!mapResult.ok) throw new Error(JSON.stringify(mapResult.errors));
+      const architecture = map as Architecture;
+      if (review.project !== architecture.project.name) throw new Error('Review and architecture project names differ');
+      if (!review.architectureBinding || review.architectureBinding.mapId !== architecture.mapId || review.architectureBinding.revision !== architecture.revision) throw new Error('Missing or stale review architecture binding');
+      if (architecture.project.revision && architecture.project.revision !== review.sourceRevision) throw new Error('Review source revision differs from architecture');
+      const known = (id: string): boolean => architecture.modules.some(module => module.id === id);
+      for (const c of review.candidates) {
+        if (c.modules.some(id => !known(id))) throw new Error(`Unknown review module binding: ${c.id}`);
+        for (const n of [...c.before.nodes, ...c.after.nodes]) if (n.modules.some(id => !known(id))) throw new Error(`Unknown review module binding: ${c.id}/${n.id}`);
+      }
+      // The review page links back through the same project-view switcher.
+      const views = { architectureHref: encodeURIComponent(path.basename(output)), constraints: !!constraintCatalog };
+      reviewHtml = renderReview(review, { views, ...(repository ? { quotes: verifyReviewQuotes(review, repository) } : {}) });
+    }
+    const options: RenderOptions = { simulation, ...(reviewHtml ? { reviewHref: encodeURIComponent(path.basename(reviewOutput)) } : {}), ...(repository ? { repository } : {}), ...(constraintCatalog ? { constraintCatalog } : {}) };
     const html = renderArchitecture(map, events, options);
     fs.mkdirSync(path.dirname(path.resolve(output)), { recursive: true });
     fs.writeFileSync(output, html);
-    if (constraintCatalog) fs.writeFileSync(sourceOutput, renderConstraintCatalog(constraintCatalog, undefined, { view: 'sources' }));
+    if (reviewHtml) fs.writeFileSync(reviewOutput, reviewHtml);
     console.log(path.resolve(output));
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error));

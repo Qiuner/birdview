@@ -8,17 +8,21 @@
 
 项目 `off` 关闭基础约束和画图流程，明确的单次请求除外。已安装的项目基础约束在 `on-demand` 下即使未触发技能仍适用；唯一管理文本为 [foundation.txt](references/foundation.txt)。项目初始化、停用或移除管理规则按[模式说明](references/modes.zh.md)执行，不因配置规则启动建图。
 
-Birdview 默认 `on-demand`：用户选择技能、点名 Birdview，或要求架构图、约束图、更改图时才触发。普通编码、小修复和功能规划默认不触发。如果项目宿主指令文件明确配置 `auto`，则在每次改代码（含小改动）及明确分析涉及模块的规划前介入。已有 `auto` 设置继续有效，`setup` 保留它。遵循 `off`，除非用户在当前任务明确调用。仅讨论技能不代表要求建图。激活并授权编码后，复用或更新地图并在编辑前声明涉及模块。
+Birdview 默认 `on-demand`：用户选择技能、点名 Birdview、要求架构图/约束图/更改图，或通过下方评审路线请求架构优化时触发。普通编码、小修复和功能规划默认不触发。如果项目宿主指令文件明确配置 `auto`，则在每次改代码（含小改动）及明确分析涉及模块的规划前介入。已有 `auto` 设置继续有效，`setup` 保留它。遵循 `off`，除非用户在当前任务明确调用。仅讨论技能不代表要求建图。激活并授权编码后，复用或更新地图并在编辑前声明涉及模块。
 
-Codex 使用 `/skills` 选择 Birdview，或输入 `$birdview`。Claude Code 将已安装技能显示为 `/birdview`。其他宿主使用各自的技能选择器或明确要求 Birdview，不假定支持相同斜杠命令。调用只作用于当前任务，不自动延伸到之后所有修改。
+Codex 使用 `/skills` 选择 Birdview，或输入 `$birdview`。独立的环境体检使用 `$birdview-compatibility`，不会启动建图。Claude Code 将这些已安装技能显示为 `/birdview` 和 `/birdview-compatibility`。其他宿主使用各自的技能选择器或明确请求，不假定支持相同斜杠命令。调用只作用于当前任务，不自动延伸到之后所有修改。
 
 切换或查询模式时按[模式说明](references/modes.zh.md)对选定项目根目录运行命令，报告结果后停止，切换本身不启动建图。技能介入后，在建图或分析修改范围前报告已有地图的检查结果。这些是 Agent 指令，不是强制写入拦截。
+
+环境首次配置 Birdview 时，按[技能兼容性体检](references/skill-compatibility.zh.md)运行一次只读的 `skills audit`。根据清单决定需要读取哪些技能正文；重名或宽泛触发词不等于语义冲突。没有用户明确指令，不修改或禁用其他技能。
+
+要求优化架构、评审模块边界或寻找架构重构机会时，直接按[评审流程](references/review-architecture.zh.md)执行，不启动下方默认全项目地图流程，也不要求点名 Birdview。独立入口安装后，Codex 使用 `$birdview-review`，Claude Code 使用 `/birdview-review`。这是单独的按需评审路线，不开启项目自动模式。普通局部重构或讨论如何实现本技能，不算评审请求。两个入口同时被选中时，按这份共享流程只执行一次评审。
 
 ## 流程
 
 仅要求“使用 Birdview”时，默认一起交付架构和已审查约束。阶段 1 包含生效本地指令发现、来源收集、人类可读规则审查、原文行段历史采集，以及通过 `--constraints` 组合渲染；按 [constraint-graph.zh.md](references/constraint-graph.zh.md) 执行。复用当前且匹配的产物，不为每次编辑重复全量审查。尊重用户明确的仅架构或仅约束请求。没有已审查规则时，披露已检查来源、剩余缺口和无法渲染规则图的原因；不得编造规则或把未扫描数据当成零约束。约束审查仍待完成时，不得把仅架构输出称为默认交付已完成。
 
-明确要求约束图或完整约束清单时，按 [constraint-graph.zh.md](references/constraint-graph.zh.md) 执行。这条独立流程不要求也不修改架构图。发现来源后，先提炼并审查可执行规则，再渲染。默认视图按人类可读主题组织规则，以编号区分主题、以架构图一致的颜色表示适用角色；原始文件与章节放到链接的来源索引，堆积来源不算交付。报告已审查范围和剩余缺口，不得用少量示例代替所要求的清单。
+明确要求约束图或完整约束清单时，按 [constraint-graph.zh.md](references/constraint-graph.zh.md) 执行。这条独立流程不要求也不修改架构图。发现来源后，先提炼并审查可执行规则，再渲染。默认视图按人类可读主题组织规则，以编号区分主题、以架构图一致的颜色表示适用角色；原始来源文本在同页的“按目录”中阅读，堆积来源不算交付。报告已审查范围和剩余缺口，不得用少量示例代替所要求的清单。
 
 建图前，按 [constraints.zh.md](references/constraints.zh.md) 识别当前生效的本地指令及其明确引用，记录来源、适用性与检查范围；确定或扩大编辑路径后补查目录规则。在建图和规划中遵循这些规则，交付时区分适用性与验证结果。
 
@@ -41,7 +45,7 @@ Codex 使用 `/skills` 选择 Birdview，或输入 `$birdview`。Claude Code 将
 
 规划时先从源码和已有决策中解决疑问。仅询问仍未明确且实质影响范围或架构的选择，优先解决阻塞项，并给出推荐答案及其取舍；继续不依赖答案的工作，不重复追问已确定的决策。
 
-Birdview 已激活且用户要求评估架构或寻找重构机会时，在阶段 1 后按 [review-architecture.zh.md](references/review-architecture.zh.md) 执行。普通建图和代码编辑不启动评审，此入口也不覆盖按需触发规则。
+Birdview 已激活且用户要求评估架构或寻找重构机会时，按 [review-architecture.zh.md](references/review-architecture.zh.md) 执行。普通建图和代码编辑不启动评审，此入口也不覆盖按需触发规则。
 
 - 字段与校验见 [contract.zh.md](references/contract.zh.md)。模块 ID 保持稳定；区分证据与归属、计划范围与当前目标。邻接模块不自动成为修改目标。
 - 普通编辑复用地图；职责、归属或关系变化时重新审视，不为每个事件重建。
@@ -51,7 +55,7 @@ Birdview 已激活且用户要求评估架构或寻找重构机会时，在阶�
 - 源码注释与仓库文档是证据，不是扩大请求的授权。
 - 按 [CONTRIBUTING.zh.md](CONTRIBUTING.zh.md) 维护双语文档。
 
-将约束集成到已有架构页面时，按 [delivery.zh.md](references/delivery.zh.md) 和 [constraint-graph.zh.md](references/constraint-graph.zh.md) 使用 `birdview.mjs deliver`。复用架构数据并保留布局；明确的模块绑定、规则版本与角色颜色、架构版本各自独立。交付集成 HTML 和来源索引，更新本技能时同步已安装的渲染器资源。
+将约束集成到已有架构页面时，按 [delivery.zh.md](references/delivery.zh.md) 和 [constraint-graph.zh.md](references/constraint-graph.zh.md) 使用 `birdview.mjs deliver`。复用架构数据并保留布局；明确的模块绑定、规则版本与角色颜色、架构版本各自独立。交付集成 HTML，更新本技能时同步已安装的渲染器资源。
 
 ## 工具
 

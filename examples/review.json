@@ -1,0 +1,919 @@
+{
+  "schemaVersion": "2",
+  "project": "birdview",
+  "revision": "2026-10-08-arch-review-1",
+  "sourceRevision": "71287e5205f0e33ac8564d37293657e6a11c275e",
+  "workingTree": {
+    "dirty": [
+      "references/review-architecture.md",
+      "references/review-architecture.zh.md",
+      "src/build-viewer.mts",
+      "src/check-build.mts",
+      "src/check-docs.mts",
+      "src/check-pr.mts",
+      "src/contracts/export.mts",
+      "src/contracts/models.mts",
+      "src/render.mts",
+      "src/viewer/main.mts",
+      "references/review-contract.md",
+      "references/review-contract.zh.md",
+      "src/render-review.mts",
+      "src/viewer/review.mts"
+    ]
+  },
+  "baseline": "架构评审功能刚加入，本轮把它连同已有的交付与约束代码一起视为当前状态。",
+  "sources": [
+    {
+      "kind": "rule",
+      "path": "AGENTS.md"
+    },
+    {
+      "kind": "doc",
+      "path": "references/delivery.md"
+    },
+    {
+      "kind": "doc",
+      "path": "references/review-architecture.md"
+    },
+    {
+      "kind": "doc",
+      "path": "references/review-contract.md"
+    }
+  ],
+  "scope": "已检查 src/ 下 CLI 入口与交付链路：render、deliver、birdview、render-constraints、compile-constraint-rules、constraint-rule-view、constraint-rule-history、constraint-freshness。",
+  "gaps": [
+    "项目没有术语表或 ADR。",
+    "未深入审查 src/viewer/main.mts 与 constraint-canvas 等前端代码。",
+    "按实验要求未阅读 render-review.mts 与 contracts/models.mts。"
+  ],
+  "language": "zh",
+  "candidates": [
+    {
+      "id": "page-delivery",
+      "title": "项目页交付分成两条入口",
+      "lede": "带评审的项目页只能走 render.mjs，而 birdview deliver 才有别名防护与原子写出；两条入口各自解析参数、判断别名、写文件。",
+      "impact": "用 --review 重新交付时失去 deliver 的别名检查和“主页最后发布”保证，写到一半失败会留下新旧混杂的页面组；以后每加一种输出都要改两处。",
+      "strength": "strong",
+      "dependency": "local-substitutable",
+      "modules": [],
+      "before": {
+        "caption": "两个 CLI 各管一套参数、别名与写出规则，评审只能走较弱的那条。",
+        "nodes": [
+          {
+            "id": "cli-deliver",
+            "label": "birdview deliver",
+            "kind": "caller",
+            "row": 1,
+            "column": 1,
+            "modules": [],
+            "evidence": [
+              0
+            ]
+          },
+          {
+            "id": "cli-render",
+            "label": "render.mjs --review",
+            "kind": "caller",
+            "row": 1,
+            "column": 2,
+            "modules": [],
+            "evidence": [
+              4
+            ]
+          },
+          {
+            "id": "deliver",
+            "label": "deliver()",
+            "kind": "module",
+            "row": 2,
+            "column": 1,
+            "modules": [],
+            "evidence": [
+              0,
+              9
+            ]
+          },
+          {
+            "id": "render-main",
+            "label": "render.mts 主块",
+            "kind": "module",
+            "row": 2,
+            "column": 2,
+            "modules": [],
+            "evidence": [
+              3,
+              8
+            ]
+          },
+          {
+            "id": "alias-strong",
+            "label": "realpath+inode 别名",
+            "kind": "step",
+            "row": 3,
+            "column": 1,
+            "modules": [],
+            "evidence": [
+              1
+            ]
+          },
+          {
+            "id": "alias-weak",
+            "label": "小写路径比较",
+            "kind": "step",
+            "row": 3,
+            "column": 2,
+            "modules": [],
+            "evidence": [
+              3
+            ]
+          },
+          {
+            "id": "review-bind",
+            "label": "评审绑定检查",
+            "kind": "step",
+            "row": 4,
+            "column": 2,
+            "modules": [],
+            "evidence": [
+              4
+            ]
+          },
+          {
+            "id": "render-arch",
+            "label": "renderArchitecture",
+            "kind": "module",
+            "row": 5,
+            "column": 1,
+            "span": 2,
+            "modules": [],
+            "evidence": [
+              6
+            ]
+          },
+          {
+            "id": "write-atomic",
+            "label": "临时文件+rename",
+            "kind": "step",
+            "row": 6,
+            "column": 1,
+            "modules": [],
+            "evidence": [
+              2,
+              7
+            ]
+          },
+          {
+            "id": "write-direct",
+            "label": "直接 writeFileSync",
+            "kind": "step",
+            "row": 6,
+            "column": 2,
+            "modules": [],
+            "evidence": [
+              6
+            ]
+          }
+        ],
+        "edges": [
+          {
+            "from": "cli-deliver",
+            "to": "deliver"
+          },
+          {
+            "from": "cli-render",
+            "to": "render-main"
+          },
+          {
+            "from": "deliver",
+            "to": "alias-strong"
+          },
+          {
+            "from": "render-main",
+            "to": "alias-weak"
+          },
+          {
+            "from": "alias-weak",
+            "to": "review-bind"
+          },
+          {
+            "from": "alias-strong",
+            "to": "render-arch"
+          },
+          {
+            "from": "review-bind",
+            "to": "render-arch"
+          },
+          {
+            "from": "render-arch",
+            "to": "write-atomic",
+            "label": "deliver"
+          },
+          {
+            "from": "render-arch",
+            "to": "write-direct",
+            "label": "render"
+          }
+        ],
+        "seams": []
+      },
+      "after": {
+        "caption": "一个交付函数负责参数、别名、评审绑定与原子写出，两个 CLI 只做转发。",
+        "nodes": [
+          {
+            "id": "cli-deliver",
+            "label": "birdview deliver",
+            "kind": "caller",
+            "row": 1,
+            "column": 1,
+            "modules": [],
+            "evidence": []
+          },
+          {
+            "id": "cli-render",
+            "label": "render.mjs --review",
+            "kind": "caller",
+            "row": 1,
+            "column": 2,
+            "modules": [],
+            "evidence": []
+          },
+          {
+            "id": "deliver",
+            "label": "项目页交付 deliver()",
+            "kind": "deep",
+            "row": 2,
+            "column": 1,
+            "span": 2,
+            "modules": [],
+            "evidence": [],
+            "absorbs": [
+              "render-main",
+              "alias-strong",
+              "alias-weak",
+              "review-bind",
+              "write-atomic",
+              "write-direct"
+            ]
+          },
+          {
+            "id": "render-arch",
+            "label": "renderArchitecture",
+            "kind": "module",
+            "row": 3,
+            "column": 1,
+            "span": 2,
+            "modules": [],
+            "evidence": []
+          }
+        ],
+        "edges": [
+          {
+            "from": "cli-deliver",
+            "to": "deliver"
+          },
+          {
+            "from": "cli-render",
+            "to": "deliver"
+          },
+          {
+            "from": "deliver",
+            "to": "render-arch"
+          }
+        ],
+        "seams": [
+          {
+            "label": "内存渲染 → 原子发布",
+            "below": "deliver"
+          }
+        ]
+      },
+      "findings": [
+        {
+          "id": "f-alias",
+          "kind": "duplicate",
+          "note": "别名检查两套",
+          "detail": "deliver 用 realpath 与 inode 识别别名，render.mts 只比较 path.resolve 后的小写字符串，符号链接或硬链接输出可能绕过后者。",
+          "targets": [
+            "alias-strong",
+            "alias-weak"
+          ],
+          "evidence": [
+            1,
+            3
+          ],
+          "confidence": "observed"
+        },
+        {
+          "id": "f-write",
+          "kind": "duplicate",
+          "note": "写出保证不一致",
+          "detail": "delivery.md 承诺临时文件、主页最后发布；render.mts 按 html、review、sources 顺序直接写，失败时可能只更新部分文件。",
+          "targets": [
+            "write-atomic",
+            "write-direct"
+          ],
+          "evidence": [
+            2,
+            6,
+            7
+          ],
+          "confidence": "observed"
+        },
+        {
+          "id": "f-seam",
+          "kind": "missing-seam",
+          "note": "deliver 无评审口",
+          "detail": "deliveryUsage 没有 --review；评审的项目名、mapId、revision 与模块绑定检查只存在于 render.mts 的 isMainModule 分支，其他调用方无法复用。",
+          "targets": [
+            "deliver",
+            "review-bind"
+          ],
+          "evidence": [
+            0,
+            4,
+            5
+          ],
+          "confidence": "observed"
+        },
+        {
+          "id": "f-dup-parse",
+          "kind": "duplicate",
+          "note": "activity 解析两份",
+          "detail": "activity JSONL 的逐行解析与报错文本在两个入口逐字复制。",
+          "targets": [
+            "deliver",
+            "render-main"
+          ],
+          "evidence": [
+            8,
+            9
+          ],
+          "confidence": "observed"
+        }
+      ],
+      "callerKnowledge": {
+        "before": [
+          "评审只能走 render",
+          "render 非原子写",
+          "别名防护强弱不同",
+          "两套参数规则",
+          "输出文件名推导"
+        ],
+        "after": [
+          "传 --review 即可"
+        ]
+      },
+      "solution": "把 deliver() 扩展为唯一的项目页交付函数，接收可选评审输入并复用其别名检查与原子发布，render.mts 主块只解析参数后调用它。",
+      "deletionTest": {
+        "verdict": "narrow",
+        "text": "删掉 render.mts 主块的交付逻辑后复杂度并未转移给调用方，而是合并进 deliver()；render.mjs 仍保留 --simulation 等诊断入口，只是变窄。"
+      },
+      "wins": [
+        {
+          "kind": "locality",
+          "text": "别名、绑定、写出规则只在一处修改"
+        },
+        {
+          "kind": "leverage",
+          "text": "deliver 新增评审输出，一次实现两条入口都受益"
+        },
+        {
+          "kind": "testability",
+          "text": "评审绑定检查可通过 deliver() 回执直接测试"
+        }
+      ],
+      "verification": [
+        "deliver 带 --review 时输出 project.review.html，并在回执 written 中列出",
+        "评审输出与输入同名或经符号链接指向输入时被拒绝且不写任何文件",
+        "评审绑定过期时回执 ok 为 false，原有页面保持不变"
+      ],
+      "boundaries": [
+        "renderArchitecture 与 renderReview 的签名和页面结构",
+        "review.json 契约",
+        "--simulation 路线"
+      ],
+      "cost": "中等：需调整 deliver 参数表与回执字段、迁移 render.mts 主块测试；评审功能刚加入，现在合并比用户依赖后再迁移便宜。",
+      "evidence": [
+        {
+          "path": "src/deliver.mts",
+          "lines": {
+            "start": 25,
+            "end": 25
+          },
+          "symbol": "deliveryUsage",
+          "quote": "export const deliveryUsage = 'Usage: birdview deliver architecture.json project.html [activity.jsonl] (--catalog sources.json --rules reviewed-rules.json --repo root | --constraints reviewed.json | --architecture-only) [--repo root] [--bilingual] [--legacy]';",
+          "note": "deliver 没有 --review 选项"
+        },
+        {
+          "path": "src/deliver.mts",
+          "lines": {
+            "start": 68,
+            "end": 76
+          },
+          "symbol": "deliver",
+          "quote": "    for (const target of outputs) {\n      if (fs.existsSync(target) && !fs.lstatSync(target).isFile()) throw new Error(`Output must be a regular file: ${target}`);\n      const targetStat = fs.existsSync(target) ? fs.statSync(target) : undefined;\n      for (const source of inputs) {\n        const sourceStat = fs.statSync(source);\n        if (canonical(target) === canonical(source) || (targetStat && targetStat.ino !== 0 && targetStat.dev === sourceStat.dev && targetStat.ino === sourceStat.ino))\n          throw new Error(`Output aliases input: ${target}`);\n      }\n    }",
+          "note": "realpath + inode 判定别名"
+        },
+        {
+          "path": "src/deliver.mts",
+          "lines": {
+            "start": 114,
+            "end": 127
+          },
+          "symbol": "deliver",
+          "quote": "    const pending = new Map<string, string>();\n    try {\n      for (const [target, content] of artifacts) {\n        fs.mkdirSync(path.dirname(target), { recursive: true });\n        const temporary = `${target}.${randomUUID()}.tmp`;\n        pending.set(target, temporary);\n        fs.writeFileSync(temporary, content, { flag: 'wx' });\n      }\n      // Publish the page last. Multiple renames are not a filesystem transaction;\n      // report completed paths if an I/O failure interrupts publication.\n      for (const [target, temporary] of pending) {\n        fs.renameSync(temporary, target);\n        receipt.written.push(target);\n      }",
+          "note": "临时文件后 rename，主页最后"
+        },
+        {
+          "path": "src/render.mts",
+          "lines": {
+            "start": 87,
+            "end": 88
+          },
+          "quote": "    if (path.resolve(input).toLowerCase() === path.resolve(output).toLowerCase()) throw new Error('Input and output must differ.');\n    if (activity && path.resolve(activity).toLowerCase() === path.resolve(output).toLowerCase()) throw new Error('Activity input and output must differ.');",
+          "note": "只比 resolve 后的小写路径"
+        },
+        {
+          "path": "src/render.mts",
+          "lines": {
+            "start": 102,
+            "end": 102
+          },
+          "quote": "      if (!review.architectureBinding || review.architectureBinding.mapId !== architecture.mapId || review.architectureBinding.revision !== architecture.revision) throw new Error('Missing or stale review architecture binding');",
+          "note": "评审集成只经 render 路线",
+          "symbol": "isMainModule"
+        },
+        {
+          "path": "src/render.mts",
+          "lines": {
+            "start": 54,
+            "end": 56
+          },
+          "quote": "if (isMainModule(import.meta.url)) {\n  try {\n    const args = process.argv.slice(2);",
+          "note": "交付逻辑全在 CLI 主块里"
+        },
+        {
+          "path": "src/render.mts",
+          "lines": {
+            "start": 114,
+            "end": 117
+          },
+          "quote": "    const html = renderArchitecture(map, events, options);\n    fs.mkdirSync(path.dirname(path.resolve(output)), { recursive: true });\n    fs.writeFileSync(output, html);\n    if (reviewHtml) fs.writeFileSync(reviewOutput, reviewHtml);",
+          "note": "逐个直接写出，无临时文件"
+        },
+        {
+          "path": "references/delivery.md",
+          "lines": {
+            "start": 37,
+            "end": 37
+          },
+          "quote": "- Every artifact is validated/rendered in memory before writes. Input/output aliases are rejected. Temporary sibling files are prepared before publication, with the main HTML last. An I/O failure during publication can leave some sidecars updated; multiple file replacements are not a transaction. Inspect `written` before retrying.",
+          "note": "deliver 承诺的写出保证"
+        },
+        {
+          "path": "src/render.mts",
+          "lines": {
+            "start": 89,
+            "end": 91
+          },
+          "quote": "    const events: unknown[] = activity ? fs.readFileSync(activity, 'utf8').split(/\\r?\\n/).filter(line => line.trim()).map((line, i): unknown => {\n      try { return JSON.parse(line); } catch { throw new Error(`Invalid JSON in activity record ${i + 1}.`); }\n    }) : [];",
+          "note": "activity 解析与 deliver 同文"
+        },
+        {
+          "path": "src/deliver.mts",
+          "lines": {
+            "start": 82,
+            "end": 84
+          },
+          "symbol": "deliver",
+          "quote": "    const events: unknown[] = activity ? fs.readFileSync(activity, 'utf8').split(/\\r?\\n/).filter(line => line.trim()).map((line, index): unknown => {\n      try { return JSON.parse(line); } catch { throw new Error(`Invalid JSON in activity record ${index + 1}.`); }\n    }) : [];",
+          "note": "同一段 activity 解析"
+        }
+      ]
+    },
+    {
+      "id": "rule-gate",
+      "title": "规则合法性校验散落三处",
+      "lede": "已审查规则目录没有统一的校验入口：编译不校验，历史收集、规则视图、来源视图各写一份范围与字段检查，条件还不一致。",
+      "impact": "坏规则要到渲染阶段才报错，且不同视图对同一条规则的接受标准不同；新增规则字段或适用性取值时容易漏改某一处。",
+      "strength": "worth-exploring",
+      "dependency": "in-process",
+      "modules": [],
+      "before": {
+        "caption": "同一套规则约束写了三遍，复用路线几乎不校验，错误推迟到渲染。",
+        "nodes": [
+          {
+            "id": "cli-deliver",
+            "label": "deliver 编译/复用",
+            "kind": "caller",
+            "row": 1,
+            "column": 1,
+            "modules": [],
+            "evidence": [
+              4
+            ]
+          },
+          {
+            "id": "cli-render",
+            "label": "render.mjs --constraints",
+            "kind": "caller",
+            "row": 1,
+            "column": 3,
+            "modules": [],
+            "evidence": [
+              5
+            ]
+          },
+          {
+            "id": "compile",
+            "label": "compileConstraintRules",
+            "kind": "module",
+            "row": 2,
+            "column": 1,
+            "modules": [],
+            "evidence": [
+              3
+            ]
+          },
+          {
+            "id": "reuse-guard",
+            "label": "复用仅查形状",
+            "kind": "step",
+            "row": 2,
+            "column": 2,
+            "modules": [],
+            "evidence": [
+              4
+            ]
+          },
+          {
+            "id": "history",
+            "label": "collectRuleHistory",
+            "kind": "module",
+            "row": 3,
+            "column": 1,
+            "modules": [],
+            "evidence": [
+              0
+            ]
+          },
+          {
+            "id": "chk-hist",
+            "label": "范围检查 #1",
+            "kind": "step",
+            "row": 3,
+            "column": 2,
+            "modules": [],
+            "evidence": [
+              0
+            ]
+          },
+          {
+            "id": "rule-view",
+            "label": "buildRuleGraph",
+            "kind": "module",
+            "row": 4,
+            "column": 1,
+            "modules": [],
+            "evidence": [
+              1
+            ]
+          },
+          {
+            "id": "chk-view",
+            "label": "字段+范围检查 #2",
+            "kind": "step",
+            "row": 4,
+            "column": 2,
+            "modules": [],
+            "evidence": [
+              1
+            ]
+          },
+          {
+            "id": "source-view",
+            "label": "来源视图",
+            "kind": "module",
+            "row": 5,
+            "column": 1,
+            "modules": [],
+            "evidence": [
+              2
+            ]
+          },
+          {
+            "id": "chk-src",
+            "label": "字段+范围检查 #3",
+            "kind": "step",
+            "row": 5,
+            "column": 2,
+            "modules": [],
+            "evidence": [
+              2
+            ]
+          }
+        ],
+        "edges": [
+          {
+            "from": "cli-deliver",
+            "to": "compile"
+          },
+          {
+            "from": "compile",
+            "to": "history"
+          },
+          {
+            "from": "history",
+            "to": "chk-hist"
+          },
+          {
+            "from": "cli-deliver",
+            "to": "reuse-guard"
+          },
+          {
+            "from": "reuse-guard",
+            "to": "rule-view"
+          },
+          {
+            "from": "cli-render",
+            "to": "rule-view"
+          },
+          {
+            "from": "history",
+            "to": "rule-view"
+          },
+          {
+            "from": "rule-view",
+            "to": "chk-view"
+          },
+          {
+            "from": "rule-view",
+            "to": "source-view"
+          },
+          {
+            "from": "source-view",
+            "to": "chk-src"
+          }
+        ],
+        "seams": []
+      },
+      "after": {
+        "caption": "一个已审查目录校验入口在编译和复用时都执行，下游视图只消费合法目录。",
+        "nodes": [
+          {
+            "id": "cli-deliver",
+            "label": "deliver 编译/复用",
+            "kind": "caller",
+            "row": 1,
+            "column": 1,
+            "modules": [],
+            "evidence": []
+          },
+          {
+            "id": "cli-render",
+            "label": "render.mjs --constraints",
+            "kind": "caller",
+            "row": 1,
+            "column": 3,
+            "modules": [],
+            "evidence": []
+          },
+          {
+            "id": "compile",
+            "label": "compileConstraintRules",
+            "kind": "module",
+            "row": 2,
+            "column": 1,
+            "modules": [],
+            "evidence": []
+          },
+          {
+            "id": "catalog-gate",
+            "label": "已审查目录校验",
+            "kind": "deep",
+            "row": 3,
+            "column": 1,
+            "span": 3,
+            "modules": [],
+            "evidence": [],
+            "absorbs": [
+              "reuse-guard",
+              "chk-hist",
+              "chk-view",
+              "chk-src"
+            ]
+          },
+          {
+            "id": "history",
+            "label": "collectRuleHistory",
+            "kind": "module",
+            "row": 4,
+            "column": 1,
+            "modules": [],
+            "evidence": []
+          },
+          {
+            "id": "rule-view",
+            "label": "buildRuleGraph",
+            "kind": "module",
+            "row": 4,
+            "column": 2,
+            "modules": [],
+            "evidence": []
+          },
+          {
+            "id": "source-view",
+            "label": "来源视图",
+            "kind": "module",
+            "row": 4,
+            "column": 3,
+            "modules": [],
+            "evidence": []
+          }
+        ],
+        "edges": [
+          {
+            "from": "cli-deliver",
+            "to": "compile"
+          },
+          {
+            "from": "compile",
+            "to": "catalog-gate"
+          },
+          {
+            "from": "cli-render",
+            "to": "catalog-gate"
+          },
+          {
+            "from": "catalog-gate",
+            "to": "history"
+          },
+          {
+            "from": "catalog-gate",
+            "to": "rule-view"
+          },
+          {
+            "from": "catalog-gate",
+            "to": "source-view"
+          }
+        ],
+        "seams": [
+          {
+            "label": "只流出已校验目录",
+            "below": "catalog-gate"
+          }
+        ]
+      },
+      "findings": [
+        {
+          "id": "f-triple",
+          "kind": "duplicate",
+          "note": "范围校验写三遍",
+          "detail": "行号范围、必填字段与适用性枚举在历史收集、规则视图、来源视图各写一次；来源视图不要求 category，历史收集额外检查路径格式，三处标准已经分叉。",
+          "targets": [
+            "chk-hist",
+            "chk-view",
+            "chk-src"
+          ],
+          "evidence": [
+            0,
+            1,
+            2
+          ],
+          "confidence": "observed"
+        },
+        {
+          "id": "f-late",
+          "kind": "ordering",
+          "note": "错误推迟到渲染",
+          "detail": "compileConstraintRules 只解析锚点，不检查 name、explanation、verification 等字段；缺字段的规则会被写入 constraints.json，直到渲染才失败。",
+          "targets": [
+            "compile",
+            "rule-view"
+          ],
+          "evidence": [
+            3,
+            1
+          ],
+          "confidence": "observed"
+        },
+        {
+          "id": "f-shallow",
+          "kind": "shallow",
+          "note": "复用只查形状",
+          "detail": "--constraints 复用时 deliver 只确认 rules 是数组，render.mjs 直接类型断言，真正的校验依赖下游视图碰巧执行。",
+          "targets": [
+            "reuse-guard"
+          ],
+          "evidence": [
+            4,
+            5
+          ],
+          "confidence": "observed"
+        }
+      ],
+      "callerKnowledge": {
+        "before": [
+          "哪个视图会报错",
+          "来源视图不查分类",
+          "编译后仍可能坏",
+          "复用需自行检查"
+        ],
+        "after": [
+          "校验失败即停"
+        ]
+      },
+      "solution": "在 constraint-types 旁新增 validateReviewedCatalog，编译结束与 --constraints 复用时调用，三个下游检查改为依赖其结果。",
+      "deletionTest": {
+        "verdict": "remove",
+        "text": "删除三处内联检查后，复杂度移入一个校验函数而不是调用方；下游代码变短，失败时机提前到读入或编译。"
+      },
+      "wins": [
+        {
+          "kind": "locality",
+          "text": "新增适用性取值或字段只改一处"
+        },
+        {
+          "kind": "testability",
+          "text": "规则合法性可脱离渲染直接测试"
+        }
+      ],
+      "verification": [
+        "缺 verification 字段的规则在 compileConstraintRules 阶段即报错",
+        "--constraints 复用一个行号越界的目录时，deliver 回执停在 inputs 阶段",
+        "合法目录渲染出的规则视图与来源视图与现在一致"
+      ],
+      "boundaries": [
+        "constraint-catalog 与 reviewed-rules 的文件格式",
+        "规则视图与来源视图的页面内容",
+        "Git 行段历史算法"
+      ],
+      "cost": "低：纯进程内重构；需确认来源视图是否有意接受无 category 的规则，若是则在校验中显式区分。",
+      "evidence": [
+        {
+          "path": "src/constraint-rule-history.mts",
+          "lines": {
+            "start": 18,
+            "end": 20
+          },
+          "symbol": "collectRuleHistory",
+          "quote": "    if (!source || !Number.isInteger(rule.line) || !Number.isInteger(rule.endLine)\n      || rule.line < 1 || rule.endLine < rule.line || rule.endLine > source.text.split(/\\r?\\n/).length\n      || !/^(?!\\/)(?!.*(?:^|\\/)\\.\\.(?:\\/|$))[^:\\r\\n\\\\]+$/.test(rule.sourcePath)) throw new Error('Invalid rule source range');",
+          "note": "历史收集时查行号范围"
+        },
+        {
+          "path": "src/constraint-rule-view.mts",
+          "lines": {
+            "start": 59,
+            "end": 62
+          },
+          "symbol": "buildRuleGraph",
+          "quote": "    if (!category || !source || !rule.name || !rule.explanation || !rule.condition || !rule.verification\n      || !Number.isInteger(rule.line) || !Number.isInteger(rule.endLine) || rule.line < 1 || rule.endLine < rule.line\n      || rule.endLine > source.text.split(/\\r?\\n/).length\n      || !['applicable', 'conditional', 'superseded', 'conflict', 'uncertain'].includes(rule.applicability)) throw new Error(`Invalid reviewed rule: ${rule.id}`);",
+          "note": "规则视图再查一遍字段与范围"
+        },
+        {
+          "path": "src/render-constraints.mts",
+          "lines": {
+            "start": 58,
+            "end": 61
+          },
+          "symbol": "buildConstraintGraph",
+          "quote": "    if (!source || !rule.id || !rule.name || !rule.explanation || !rule.condition || !rule.verification\n      || !Number.isInteger(rule.line) || !Number.isInteger(rule.endLine) || rule.line < 1 || rule.endLine < rule.line\n      || rule.endLine > source.text.split(/\\r?\\n/).length\n      || !['applicable', 'conditional', 'superseded', 'conflict', 'uncertain'].includes(rule.applicability)) throw new Error('Invalid reviewed rule');",
+          "note": "来源视图第三份，且不查 category"
+        },
+        {
+          "path": "src/compile-constraint-rules.mts",
+          "lines": {
+            "start": 22,
+            "end": 24
+          },
+          "symbol": "compileConstraintRules",
+          "quote": "      const { anchor, history: _history, ...rule } = authored;\n      rules.push({ ...rule, sourcePath: source.path, line: start + 1, endLine: end + 1,\n        category: group.category, ...(group.topic ? { topic: group.topic } : {}), applicability: rule.applicability || 'conditional' });",
+          "note": "编译直接拷贝作者字段，不校验"
+        },
+        {
+          "path": "src/deliver.mts",
+          "lines": {
+            "start": 98,
+            "end": 99
+          },
+          "symbol": "deliver",
+          "quote": "      constraints = readJson(constraintsFile) as ReviewedConstraintCatalog;\n      if (!constraints || !Array.isArray(constraints.rules) || !constraints.ruleReview) throw new Error('--constraints requires a reviewed catalog.');",
+          "note": "复用 --constraints 只查形状"
+        },
+        {
+          "path": "src/render.mts",
+          "lines": {
+            "start": 74,
+            "end": 74
+          },
+          "quote": "      constraintCatalog = JSON.parse(fs.readFileSync(file, 'utf8')) as ReviewedConstraintCatalog;",
+          "note": "render.mjs 直接类型断言"
+        }
+      ]
+    }
+  ],
+  "recommendation": {
+    "candidate": "page-delivery",
+    "reason": "评审功能刚加入，现在把评审输出并入 deliver 的成本最低，并能直接获得已有的别名与原子写出保证。"
+  }
+}

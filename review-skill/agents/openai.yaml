@@ -1,0 +1,6 @@
+interface:
+  display_name: "Birdview Review"
+  short_description: "通过命令或优化架构请求发起评审，展示当前与建议结构及源码依据"
+  default_prompt: "使用 $birdview-review 评审当前项目架构，生成对照页面，不修改代码。"
+policy:
+  allow_implicit_invocation: true

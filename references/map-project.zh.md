@@ -56,7 +56,7 @@
 node <skill-root>/scripts/birdview.mjs deliver <project-root>/.birdview/architecture.json <project-root>/.birdview/architecture.html --catalog <project-root>/.birdview/constraints.catalog.json --rules <project-root>/.birdview/reviewed-rules.json --repo <project-root>
 ```
 
-复用有效的编译清单时，将 `--catalog ... --rules ...` 换为 `--constraints <reviewed.json>`。仅在明确的仅架构请求或已披露规则清单不可用时改用 `--architecture-only`。阅读[交付回执](delivery.zh.md)中的警告和历史缺口；成功输入无需另行校验、编译或生成中间 HTML。检查最终集成页面具有架构/约束切换、来源依据、规则版本标识和来源索引链接，并一起交付 `.sources.html` 文件。架构检查面板只统计架构数据中的规则，不统计独立清单；缺少模块关联不等于项目没有规则。
+复用有效的编译清单时，将 `--catalog ... --rules ...` 换为 `--constraints <reviewed.json>`。仅在明确的仅架构请求或已披露规则清单不可用时改用 `--architecture-only`。阅读[交付回执](delivery.zh.md)中的警告和历史缺口；成功输入无需另行校验、编译或生成中间 HTML。检查最终集成页面具有架构/约束切换、来源依据、规则版本标识和“按目录”中的页内来源阅读。架构检查面板只统计架构数据中的规则，不统计独立清单；缺少模块关联不等于项目没有规则。
 
 渲染器校验 JSON 后输出自包含 HTML，无需服务器/网络资源。不要手写替代查看器或用虚构演示充当项目地图。
 

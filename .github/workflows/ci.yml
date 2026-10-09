@@ -18,6 +18,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Review examples cite exact lines from the inspected source commit.
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
@@ -29,13 +32,15 @@ jobs:
       - run: npm run validate:examples
       - run: node scripts/check-docs.mjs
       - run: npm run build:demo
-      - run: git diff --exit-code -- examples/harness-activity.html
+      - run: git diff --exit-code -- examples/harness-activity.html examples/review.html
       - run: npm run check:install
 
   browser:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 24

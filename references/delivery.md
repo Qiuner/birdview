@@ -8,14 +8,14 @@ After inspecting source and authoring the architecture and reviewed rules, use o
 node scripts/birdview.mjs deliver architecture.json project.html --catalog constraints.catalog.json --rules reviewed-rules.json --repo /path/to/repository
 ```
 
-This writes `project.html`, `project.sources.html` and `project.constraints.json`. Keep the original source catalog and reviewed selection too. Source collection and AI semantic review happen **before** this command; it does not infer rules or confirm coverage. A separate source-only or standalone constraint HTML is unnecessary for integrated delivery; the auxiliary source page is generated here.
+This writes `project.html` and `project.constraints.json`. Keep the original source catalog and reviewed selection too. Source collection and AI semantic review happen **before** this command; it does not infer rules or confirm coverage. A separate source-only or standalone constraint HTML is unnecessary for integrated delivery; source text is readable in By directory within the integrated page.
 
 Choose exactly one route:
 
 | Route | Arguments | Outputs |
 | --- | --- | --- |
-| Compile reviewed selection | `--catalog sources.json --rules reviewed-rules.json --repo root` | Integrated HTML, source HTML, compiled catalog with history |
-| Reuse matching reviewed catalog | `--constraints project.constraints.json` | Integrated HTML and source HTML |
+| Compile reviewed selection | `--catalog sources.json --rules reviewed-rules.json --repo root` | Integrated HTML, compiled catalog with history |
+| Reuse matching reviewed catalog | `--constraints project.constraints.json` | Integrated HTML |
 | Explicit architecture-only or disclosed missing rules | `--architecture-only` | Architecture HTML |
 
 Reuse does not refresh rule history; inspect scope, snapshot and bindings before reusing. `--repo root` is optional for reuse and architecture-only and enables the existing map-constraint freshness check; it does not prove the whole map is current. An unavailable rule catalog must remain a stated limitation, not a claim of complete default delivery.

@@ -1,11 +1,10 @@
 <div align="center">
   <img src="assets/brand/logo-512.png" alt="Birdview Logo" width="120" height="120">
   <h1>Birdview</h1>
-  <p><strong>用 Birdview 来改变开发的流程！真正地从关注代码到关注架构！解决 AI coding 的黑盒！</strong></p>
-  <p><strong>古法编程最后的优势是感知架构——Birdview 彻底终结了这个理由。</strong></p>
   <p><strong>编程的未来只剩两件事：约束与架构。</strong></p>
+  <p>让 AI 先画出它眼中的系统、要遵守的规则和准备改动的范围，你确认后再动代码。<br>从盯着代码转向看架构，打开 AI coding 的黑盒。</p>
   <p>
-    <img src="https://img.shields.io/badge/%E7%89%88%E6%9C%AC-0.3.1-2f81f7?style=flat-square" alt="版本 0.3.1">
+    <img src="https://img.shields.io/badge/%E7%89%88%E6%9C%AC-0.4.0-2f81f7?style=flat-square" alt="版本 0.4.0">
     <img src="https://img.shields.io/badge/Node.js-18%2B-339933?style=flat-square&amp;logo=nodedotjs&amp;logoColor=white" alt="Node.js 18 或更高版本">
     <img src="https://img.shields.io/badge/license-MIT-2da44e?style=flat-square" alt="MIT 许可证">
     <img src="https://img.shields.io/badge/%E8%BE%93%E5%87%BA-%E7%8B%AC%E7%AB%8B%20HTML-e34f26?style=flat-square&amp;logo=html5&amp;logoColor=white" alt="独立 HTML 输出">
@@ -16,6 +15,7 @@
 
 <p align="center">
   <a href="#快速开始">快速开始</a> ·
+  <a href="#三个视图">三个视图</a> ·
   <a href="#工作原理">工作原理</a> ·
   <a href="examples/harness-activity.html">交互演示</a> ·
   <a href="https://qiuner.github.io/birdview/">项目介绍页</a> ·
@@ -24,38 +24,50 @@
 
 <!-- [English](README.md) -->
 
-Birdview 是一个安装给 AI 编程 Agent 的 Skill，把**架构与约束**放到同一个可审阅的视图中。它帮助你了解项目如何组织、哪些规则适用，以及 AI 准备修改什么。有编码任务时，Agent 先展示地图和修改计划，等待你确认，再实施并记录验证结果。输出为独立、可交互的 HTML 页面，浏览器直接打开即可，无需部署服务。
-
-**[项目介绍页](https://qiuner.github.io/birdview/)：** [qiuner.github.io/birdview](https://qiuner.github.io/birdview/) · **[主题](https://github.com/Qiuner/birdview#readme)：** `agent-tools` `architecture-as-code` `code-visualization` `coding-agents` `developer-tools` `software-architecture`
-
-例如，你调用 Birdview，让 AI“给登录接口增加限流”：
-
-- 普通流程：AI 直接搜索和修改代码，你最后从 diff 中判断它是否漏改或误改。
-- Birdview 流程：AI 展示登录模块、适用的接口和安全规则、拟修改文件及判断依据。等待你确认范围后，再实施并记录实际运行的检查。
-
-Birdview 不会自动监听 Agent 的每一步，也不会替代 Git diff、测试或代码审查。它把 Agent 对项目的理解和它声明的修改范围放到同一张架构图上，让你更早发现范围错误，而不是等代码写完再猜。
+Birdview 是一个安装给 AI 编程 Agent 的 Skill。它把项目的**架构**、**约束**和本次**改动范围**画在同一张图上：Agent 先展示它的理解和计划，等你确认，再实施并记录真实的验证结果。输出是一个独立的 HTML 页面，浏览器直接打开，不需要部署任何服务。
 
 <p align="center">
-  <img src="docs/birdview-overview.zh.png" alt="Birdview 更改视图" width="100%">
+  <img src="docs/media/changes.zh.gif" alt="Birdview 更改视图：在架构图上逐步回放 Agent 的计划，打开范围外影响，查看模块详情" width="100%">
 </p>
 
-> 截图使用仓库内置的虚构智能体运行框架，不代表观测到的生产活动。
+> 演示使用仓库内置的虚构智能体运行框架，不代表观测到的生产活动。
 
-## Birdview 能看到什么
+## v0.4.0 新功能
 
-日志能告诉你 AI 做过哪些操作，diff 能告诉你哪些代码行变了，但它们很难直接回答：这个改动位于系统的哪一部分？还会影响谁？AI 为什么认为这些文件属于本次任务？
+- **架构评审**：查看有源码依据的现状图、红笔批注和优化建议，确认方案后再实施。
+- **技能兼容性体检**：检查哪些请求会触发重叠技能，用文字报告说明具体场景、结论和证据。
+- **更改路径与范围外影响**：追踪已声明的计划，核对改动范围之外直接相连的模块。
 
-Birdview 把这些信息放进同一个页面：
+触发示例、安装方式和升级提醒见[发布说明](docs/release-notes-0.4.0.zh.md)。
 
-- **项目全图：** 系统有哪些模块、每个模块负责什么、模块之间怎样连接。
-- **项目约束：** 已审查规则的适用条件、具体解释、来源证据和已追踪版本。
-- **阅读范围：** 哪些来源已收集、已审查，哪些仍不确定或尚未检查。
-- **本次改动：** Agent 声明要触碰哪些模块和文件，目前进行到哪一步。
-- **判断依据：** 每个架构结论对应哪些源码文件或代码位置。
-- **前后对照：** 在同一布局中比较完整架构与本次改动范围。
-- **验证记录：** Agent 实际运行了哪些检查，以及检查是否通过。
+## 为什么需要它
 
-集成 HTML 提供架构和约束视图、明暗主题、模块详情及中英文界面。渲染前会检查输入的结构与一致性，CLI 还会导出辅助来源索引。收集到文档不代表其中所有规则自动生效，展示规则也不代表实现已经满足它。
+让 AI“给登录接口增加限流”：
+
+- **普通流程：** AI 直接搜索、直接改，你只能从最后的 diff 里猜它有没有漏改、误改。
+- **Birdview 流程：** AI 先展示登录相关模块、适用的接口和安全规则、准备改的文件以及判断依据。你确认范围后，它才动手，并记录实际跑过的检查。
+
+日志告诉你 AI 做了哪些操作，diff 告诉你哪些行变了，但它们都回答不了：这个改动在系统的哪个位置？还会波及谁？AI 凭什么认为这些文件属于本次任务？Birdview 让你在代码写完之前就发现范围错误，而不是事后再猜。
+
+它不会自动监听 Agent 的每一步，也不替代 Git diff、测试或代码审查。
+
+## 三个视图
+
+页面顶部用 **架构 · 约束 · 评审** 切换。
+
+**架构**：项目有哪些模块、各自负责什么、怎样连接，每个结论都附有源码依据。提供活动记录后，同一张图会变成**更改视图**：标出 Agent 声明要改的模块和文件、当前进行到哪一步，并用「范围外影响」显示与计划直接相连、却没有声明的模块。
+
+**约束**：已审查规则的适用条件、解释、来源原文和版本。可以按主题理解规则，也可以按目录追溯文件；「阅读范围」会说明哪些来源已审查、哪些还没覆盖。收集到的文档不等于规则自动生效，展示规则也不代表实现已经满足它。
+
+**评审**：架构评审页。墨线画源码里的事实，红笔圈出问题，再画一张「建议稿」给出改进方案；依据引用源码原文；使用 `--repo` 生成时，会与记录的源码版本或工作区逐行核对，未提供仓库时标记为未核对。
+
+<p align="center">
+  <img src="docs/media/review.zh.gif" alt="Birdview 架构评审：现状图上的红笔批注、建议稿和逐行核对过的源码剪报" width="100%">
+</p>
+
+> 录屏中的评审是仓库自带的示例，内容为中文；界面也支持英文。
+
+所有视图都支持明暗主题、中英文界面，渲染前会校验输入的结构与一致性。
 
 ## 快速开始
 
@@ -65,7 +77,7 @@ Birdview 把这些信息放进同一个页面：
 npx skills add Qiuner/birdview --skill birdview
 ```
 
-在 Agent 中发起一个新任务，主动调用技能。**默认仅在明确要求时运行；主动开启项目自动模式后，才会在普通代码修改前触发。**
+在 Agent 中新建一个任务，主动调用技能。**默认只在你明确要求时运行；开启项目自动模式后，才会在普通代码修改前自动触发。**
 
 **Codex：** 输入 `/skills` 选择 Birdview，或输入：
 
@@ -79,13 +91,24 @@ $birdview 展示这个项目的架构和约束，不修改代码
 /birdview 展示这个项目的架构和约束，不修改代码
 ```
 
-DeepSeek Harness 等宿主使用各自的技能选择器，或明确要求使用 Birdview。斜杠命令支持取决于宿主。
+DeepSeek Harness 等其他宿主，使用各自的技能选择器，或明确要求使用 Birdview；是否支持斜杠命令取决于宿主。
 
-检查 Agent 是否交付了可在浏览器阅读的架构与已审查约束页面，包含来源证据及审查缺口。无法完成约束审查时，应说明缺失范围，不编造规则。仅看图的请求交付后结束；编码请求等待你确认已展示的方案。完整的 Codex、Claude Code、DeepSeek Harness 安装方法和验证步骤见[安装指南](docs/installation.zh.md)，本版功能与限制见 [0.3.1 发布说明](docs/release-notes-0.3.1.zh.md)。
+成功时，Agent 会交付一个能在浏览器里阅读的页面，包含架构、已审查的约束、来源证据和审查缺口。无法完成约束审查时，它应当说明缺了什么，而不是编造规则。只看图的请求交付后就结束；编码请求会停下来等你确认展示的方案。
 
-### 从源码运行演示
+完整的安装和验证步骤见[安装指南](docs/installation.zh.md)，本版功能与限制见 [0.4.0 发布说明](docs/release-notes-0.4.0.zh.md)。
 
-开发或试用仓库内置演示需要 Node.js 18 或更高版本：
+### 示例页面
+
+仓库里有 2 个示例页面，都是离线 HTML，不用运行任何命令，直接在浏览器中打开：
+
+| 页面 | 视图 | 数据 |
+|---|---|---|
+| [`examples/harness-activity.html`](examples/harness-activity.html) | 完整架构、更改视图（含范围外影响） | 模拟的项目和 Agent 活动 |
+| [`examples/review.html`](examples/review.html) | 架构评审：现状图上的红笔批注、誊清稿和源码剪报 | 由 AI 实际评审 Birdview 自身生成：页面交付与规则校验两个候选，引用已与源码逐行核对 |
+
+约束视图需要先整理约束目录，仓库里暂时没有可直接打开的示例。
+
+想从源码重新生成示例，需要 Node.js 18 或更高版本：
 
 ```sh
 npm ci
@@ -93,8 +116,6 @@ npm run validate:examples
 npm test
 npm run build:demo
 ```
-
-在浏览器中打开 [`examples/harness-activity.html`](examples/harness-activity.html)。演示中的项目和 Agent 活动均为模拟数据。
 
 ## 交流与反馈
 
@@ -108,27 +129,19 @@ npm run build:demo
 
 也可以直接在 GitHub [分享使用反馈](https://github.com/Qiuner/birdview/issues/new?template=usage_feedback.yml)：成功使用、遗漏模块、错误关系或安装问题都可以。不需要提供私有源码，截图和脱敏示例选填。
 
-## 查看器指引
+## 调用方式
 
-打开集成页面后，可以切换**架构**和**约束**。架构包含项目全图；提供活动记录时，还可查看更改和并排对照。点击模块查看职责、所属文件和源码依据，活动历史记录 Agent 声明的计划、进度与检查结果。
+无论哪种模式，Birdview 激活后都会先展示地图和拟修改范围，等你确认后再改代码。同一已确认范围内不重复询问，范围发生实质变化时再确认。只看图的请求交付后结束。这是 Agent 遵守的流程，不是 HTML 页面的强制写入锁。
 
-约束页可**按主题**理解规则，或**按目录**追溯文件。双击节点查看具体解释或来源原文，通过**阅读范围**检查审查覆盖和缺口。角色颜色与架构图一致，不代表合规结果。
-
-第一次打开时可跟随**使用指引**浏览，也可以随时跳过或按 Escape 退出。之后仍可从工具栏重新打开指引。
-
-## 显式调用
-
-无论哪种模式，激活后都会先展示地图和拟修改范围，等待你确认后再改代码。同一已确认范围内不重复询问，范围发生实质变化时再确认。仅看图的请求在交付后结束。这是 Agent 执行规则，不是 HTML 页面的强制写入锁。
-
-Birdview **默认按需调用**。普通编码、小修复和功能规划默认不触发，可主动开启项目自动模式。
+Birdview **默认按需调用**，普通编码、小修复和功能规划都不会触发：
 
 - **Codex：** 输入 `/skills` 选择 Birdview，或输入 `$birdview`。
-- **Claude Code：** 使用 `/birdview` 调用已安装技能。
-- **DeepSeek Harness 等宿主：** 使用宿主的技能选择器，或明确要求使用 Birdview；斜杠命令支持取决于宿主。
+- **Claude Code：** 使用 `/birdview` 调用已安装的技能。
+- **DeepSeek Harness 等宿主：** 使用宿主的技能选择器，或明确要求使用 Birdview。
 
-例如：“使用 Birdview 展示这个项目的架构和约束，不修改代码。”调用只作用于当前任务，不延伸到未来修改。技能在开始流程前检查项目模式；宿主调用配置允许项目主动启用自动模式。
+例如：“使用 Birdview 展示这个项目的架构和约束，不修改代码。”调用只对当前任务有效，不延伸到之后的修改。
 
-自动模式为可选项：开启后，每次改代码（含小改动）及明确分析涉及模块的规划前都会触发。新项目默认按需；`AGENTS.md` 或 `CLAUDE.md` 中已有的 `Birdview mode: auto` 继续有效。选择或查询项目模式：
+**自动模式**是可选的：开启后，每次改代码（包括小改动）以及明确分析涉及模块的规划之前都会触发。新项目默认按需；`AGENTS.md` 或 `CLAUDE.md` 中已有的 `Birdview mode: auto` 继续有效。选择或查询项目模式：
 
 ```sh
 node <skill-root>/scripts/birdview.mjs mode auto --project <project-root>
@@ -136,7 +149,46 @@ node <skill-root>/scripts/birdview.mjs mode on-demand --project <project-root>
 node <skill-root>/scripts/birdview.mjs mode --project <project-root>
 ```
 
-初始化为新项目采用 `on-demand`，保留已有 `auto`、`on-demand` 或 `off` 设置。Codex 和 DeepSeek Harness 使用 `AGENTS.md`；Claude Code 添加 `--agent claude-code` 使用 `CLAUDE.md`。不会自动重写其他项目。升级后请新建任务。详见[模式说明](references/modes.zh.md)。
+初始化时新项目采用 `on-demand`，已有的 `auto`、`on-demand` 或 `off` 设置会保留。Codex 和 DeepSeek Harness 使用 `AGENTS.md`；Claude Code 添加 `--agent claude-code` 使用 `CLAUDE.md`。不会自动改写其他项目。升级后请新建任务。详见[模式说明](references/modes.zh.md)。
+
+### 架构评审
+
+说“优化这个项目的架构”或“评审模块边界”，就会进入架构评审流程。Birdview 先阅读源码，再给出现状图和建议稿、源码依据、收益、迁移成本和验证步骤。你审阅展示的方案后，再决定是否授权实施。普通修复、局部重构、只要求画出现有架构，都不会启动评审。
+
+独立入口位于 `review-skill/`。把它以 `birdview-review` 为名安装到完整 `birdview` 技能的同级目录；它依赖完整包中的参考文档和渲染器。只安装主技能不会同时安装这个入口。Codex 在技能选择器中选择 Birdview Review，或输入：
+
+```text
+$birdview-review 评审当前项目架构，展示优化方案，先不要改代码。
+```
+
+Claude Code 安装入口后使用 `/birdview-review`。主 Birdview 技能也会把架构优化请求转入同一流程。自然语言触发依赖宿主发现已安装的技能，安装或更新后请在新任务中确认能触发。这些是 Agent 技能调用，不是 `birdview` CLI 子命令。详见[评审流程](references/review-architecture.zh.md)和[评审契约](references/review-contract.zh.md)。
+
+### 技能兼容性体检
+
+想检查已安装的技能能否一起触发时，在 Codex 使用 `$birdview-compatibility`，在 Claude Code 使用 `/birdview-compatibility`。体检会先盘点生效的技能根目录，再读取相关技能正文，对比触发范围、调用模式、写权限和确认门槛，最后输出重复安装、触发重叠以及分场景的兼容性结论，并列出每条结论使用的证据。
+
+直接运行 CLI 时，同时写出机器可读和人类可读的结果：
+
+```sh
+node <skill-root>/scripts/birdview.mjs skills audit \
+  --project <project-root> \
+  --language zh \
+  --assessment <project-root>/.birdview/compatibility-assessment.json \
+  --write <project-root>/.birdview/compatibility-audit.json \
+  --write-markdown <project-root>/.birdview/compatibility-audit.md
+```
+
+与 Agent 的对话使用英文时传 `--language en`。该命令对已安装技能只读，不会禁用、改写或重排其他技能，也不会生成架构图。修改技能配置前，先阅读 Markdown 报告。
+
+## 查看器指引
+
+打开集成页面后，用顶部的**架构**、**约束**和**评审**切换（后两者只在生成了对应数据时出现）。点击模块可查看职责、所属文件和源码依据；活动历史记录 Agent 声明的计划、进度和检查结果。
+
+约束页可**按主题**理解规则，或**按目录**追溯文件。双击节点查看具体解释或来源原文，通过**阅读范围**检查审查覆盖和缺口。角色颜色与架构图一致，不代表合规结果。
+
+评审页中，悬停任一节点，两张图里的同一节点会一起高亮；多个候选用编号切换，「建议先做」可直接跳到推荐的候选。
+
+第一次打开时可以跟随**使用指引**浏览，也可以随时跳过或按 Escape 退出，之后仍可从工具栏重新打开。
 
 ## 直接生成 HTML
 
@@ -147,20 +199,26 @@ node scripts/validate.mjs .birdview/architecture.json
 node scripts/render.mjs .birdview/architecture.json .birdview/architecture.html
 ```
 
-如果还要展示 Agent 声明的任务过程，加入活动记录：
+加入 Agent 声明的任务过程（活动记录）：
 
 ```sh
 node scripts/validate.mjs .birdview/architecture.json .birdview/activity.jsonl
 node scripts/render.mjs .birdview/architecture.json .birdview/activity.html .birdview/activity.jsonl
 ```
 
-要加入已经收集并审查的约束清单：
+加入已经收集并审查的约束清单：
 
 ```sh
 node scripts/birdview.mjs deliver .birdview/architecture.json .birdview/project.html --constraints .birdview/constraints.reviewed.json
 ```
 
-CLI 生成集成页面及相邻的 `project.sources.html` 辅助导出。来源发现、规则审查和独立约束图生成见[约束流程](references/constraint-graph.zh.md)。
+CLI 生成一个集成页面，来源原文在页内阅读。来源发现、规则审查和独立约束图生成见[约束流程](references/constraint-graph.zh.md)。
+
+生成架构评审页，并逐行核对源码引用：
+
+```sh
+node scripts/render-review.mjs .birdview/review.json .birdview/review.html --repo .
+```
 
 需要同时校验中英文内容时添加 `--bilingual`。`--simulation` 只用于明确标记虚构的演示数据。
 
@@ -172,16 +230,16 @@ CLI 生成集成页面及相邻的 `project.sources.html` 辅助导出。来源�
 Agent 声明 ─────> activity.jsonl ────────────┘
 ```
 
-`architecture.json` 描述项目模块、职责、文件归属、源码依据和模块关系。可选的 `activity.jsonl` 逐行记录 Agent 声明的任务范围、当前目标、进度和验证结果。`constraints.reviewed.json` 保存收集到的来源、已审查规则及覆盖范围。渲染器校验提供的数据后生成 HTML。
+`architecture.json` 描述项目模块、职责、文件归属、源码依据和模块关系。可选的 `activity.jsonl` 逐行记录 Agent 声明的任务范围、当前目标、进度和验证结果。`constraints.reviewed.json` 保存收集到的来源、已审查规则及覆盖范围。渲染器先校验提供的数据，再生成 HTML。
 
-用户实际使用时分为四步：
+实际使用分四步：
 
-1. **认识架构与约束：** 阅读源码和本地指令，复用或更新地图，披露审查缺口。
-2. **展示修改计划：** 说明涉及模块/文件、预期行为、适用规则和拟运行的检查。
-3. **确认修改范围：** 等待你在对话中明确确认后再实施；同一方案复用已有确认，范围实质变化时再次确认。
+1. **认识架构与约束：** 阅读源码和本地指令，复用或更新地图，说明审查缺口。
+2. **展示修改计划：** 说明涉及的模块和文件、预期行为、适用规则和准备运行的检查。
+3. **确认修改范围：** 等你在对话中明确确认后再实施；同一方案复用已有确认，范围实质变化时再次确认。
 4. **实施与验证：** 在已确认范围内修改，记录实际检查，说明剩余限制。
 
-确认方案不等于测试通过。你可以明确要求某次任务跳过确认；普通功能请求或开启自动模式不代表豁免。
+确认方案不等于测试通过。你可以明确要求某次任务跳过确认；普通的功能请求或开启自动模式都不算豁免。
 
 完整流程见[阶段 1：建立项目地图](references/map-project.zh.md)和[阶段 2：表达变更](references/show-changes.zh.md)。
 
@@ -192,6 +250,7 @@ Agent 声明 ─────> activity.jsonl ───────────�
 | `architecture.json` | 项目标识、模块、归属、证据、关系、分组和稳定布局 |
 | `constraints.reviewed.json` | 收集的来源、已审查规则、适用性、版本信息和审查覆盖 |
 | `activity.jsonl` | 有序的 Agent 声明，包括任务范围、目标、文件、阶段和验证记录 |
+| `review.json` | 架构评审：现状图与建议稿、红笔批注、调用方须知和带原文的源码证据 |
 | `architecture.html` | 包含地图、可选约束清单及活动历史的查看器 |
 
 Schema 负责约束结构。[`scripts/validate.mjs`](scripts/validate.mjs) 还会检查稳定地图标识、连续序号、合法范围与目标、文件归属以及一致的检查结果等跨记录规则。校验不会证明架构声明真实，也不会证明引用的源码文件存在。
@@ -201,16 +260,16 @@ Schema 负责约束结构。[`scripts/validate.mjs`](scripts/validate.mjs) 还�
 | 路径 | 内容 |
 | --- | --- |
 | [`src/`](src) | 契约、CLI 工具、浏览器查看器和网站的 TypeScript 源码 |
-| [`schemas/`](schemas) | 架构与活动 JSON Schema |
+| [`schemas/`](schemas) | 架构、活动和评审的 JSON Schema |
 | [`scripts/`](scripts) | 校验器、独立页面渲染器和文档检查 |
 | [`assets/`](assets) | 查看器模板、样式与生成的浏览器构建产物 |
-| [`examples/`](examples) | 虚构地图、活动记录和生成后的交互演示 |
+| [`examples/`](examples) | 示例地图、活动记录、评审数据和生成好的交互页面 |
 | [`references/`](references) | 编写流程、契约、活动与双语指引 |
 | [`test/`](test) | 契约、渲染和可选的浏览器级检查 |
 
 ## 当前边界
 
-Birdview 0.3.1 使用文件快照：
+Birdview 0.4.0 基于文件快照：
 
 - 来源收集、规则适用性和合规验证分别表达，审查不完整时必须披露。
 - 用户确认保留在对话中，不由 HTML 批准按钮或文件写入锁强制执行。
@@ -225,34 +284,23 @@ Birdview 0.3.1 使用文件快照：
 ```sh
 npm test                 # 契约与渲染器测试
 npm run validate:examples
-npm run build:demo       # 重新生成虚构活动演示
+npm run build:demo       # 重新生成示例页面
 node scripts/check-docs.mjs
 ```
 
 浏览器级检查位于 [`test/viewer.browser.mts`](test/viewer.browser.mts)，需要本地安装 Playwright，或通过 `BIRDVIEW_PLAYWRIGHT_PATH` 指向相应模块。
 
-字段语义和约束见 [Birdview 契约](references/contract.zh.md)。文档修改必须遵循 [CONTRIBUTING.zh.md](CONTRIBUTING.zh.md) 中的双语规则。
+字段语义和约束见 [Birdview 契约](references/contract.zh.md)。文档修改必须遵循 [CONTRIBUTING.zh.md](CONTRIBUTING.zh.md) 中的双语规则。发版准备见[发布检查清单](docs/releasing.zh.md)。
+
+## Star 增长
+
+<p align="center">
+  <img src="docs/star-history.svg" alt="Birdview GitHub Star 增长曲线" width="100%">
+</p>
+
+> 图表基于 2026 年 10 月 8 日当前的 GitHub stargazer 列表生成。GitHub 后续可能清理异常 Star，公开记录见 [Issue #33](https://github.com/Qiuner/birdview/issues/33)。
 
 ## 许可证
 
 采用 [MIT 许可证](LICENSE)。Copyright (c) 2026 Qiuner。
 第三方许可证声明保留在 [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES) 中。
-
-发版准备见[发布检查清单](docs/releasing.zh.md)。
-
-### 技能兼容性体检
-
-当你要检查已安装技能能否一起触发时，在 Codex 使用 `$birdview-compatibility`，在 Claude Code 使用 `/birdview-compatibility`。体检会先盘点生效的技能根目录，再读取相关技能正文，对比触发范围、调用模式、写权限和确认门槛，最后输出重复安装、触发重叠及按场景成立的兼容性结论，并列出每条结论使用的证据。
-
-直接运行 CLI 时，同时写出机器可读和人类可读结果：
-
-```sh
-node <skill-root>/scripts/birdview.mjs skills audit \
-  --project <project-root> \
-  --language zh \
-  --assessment <project-root>/.birdview/compatibility-assessment.json \
-  --write <project-root>/.birdview/compatibility-audit.json \
-  --write-markdown <project-root>/.birdview/compatibility-audit.md
-```
-
-与 Agent 的对话使用英文时传 `--language en`。该命令对已安装技能保持只读，不会禁用、改写或重排其他技能，也不会生成架构图。修改技能配置前，先阅读 Markdown 报告。

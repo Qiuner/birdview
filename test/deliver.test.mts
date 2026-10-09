@@ -9,7 +9,6 @@ import { createHash } from 'node:crypto';
 import { deliver, type DeliveryReceipt } from '../src/deliver.mjs';
 import { discoverConstraints } from '../src/discover-constraints.mjs';
 import { renderArchitecture } from '../src/render.mjs';
-import { renderConstraintCatalog } from '../src/render-constraints.mjs';
 import type { Architecture } from '../src/contracts/models.mjs';
 import type { ReviewedConstraintCatalog } from '../src/constraint-types.mjs';
 
@@ -78,13 +77,14 @@ test('delivery compiles reviewed rules, collects real history and reuses catalog
   assert.equal(report.ok, true, report.error);
   assert.deepEqual(report.constraints?.historyGaps, []);
   assert.equal(report.constraints?.rules, 1);
-  assert.equal(report.written.length, 3);
+  assert.equal(report.written.length, 2);
   const compiled = JSON.parse(fs.readFileSync(report.outputs!.constraints!, 'utf8')) as ReviewedConstraintCatalog;
   assert.equal(compiled.ruleReview.implementationVerification, 'unverified');
   assert.equal(compiled.rules[0]!.history?.status, 'tracked');
-  const expected = renderArchitecture(map, [], { repository: dir, constraintCatalog: compiled, constraintSourceHref: 'project.sources.html' });
+  const expected = renderArchitecture(map, [], { repository: dir, constraintCatalog: compiled });
   assert.equal(htmlDigest(fs.readFileSync(output, 'utf8')), htmlDigest(expected));
-  assert.equal(fs.readFileSync(report.outputs!.sources!, 'utf8'), renderConstraintCatalog(compiled, undefined, { view: 'sources' }));
+  assert.equal('sources' in report.outputs!, false);
+  assert.equal(fs.existsSync(path.join(dir, 'project.sources.html')), false);
   assert.equal(fs.readFileSync(source, 'utf8'), JSON.stringify(catalog));
   assert.equal(fs.readFileSync(rules, 'utf8'), JSON.stringify(selection));
   assert.equal(deliver([example, output, '--constraints', report.outputs!.constraints!, '--repo', dir]).ok, true);
@@ -121,7 +121,7 @@ test('delivery compiles reviewed rules, collects real history and reuses catalog
   assert.equal(interrupted.ok, false);
   assert.equal(interrupted.stage, 'write');
   assert.match(interrupted.error!, /publication failure/);
-  assert.deepEqual(interrupted.written, [report.outputs!.sources!]);
+  assert.deepEqual(interrupted.written, []);
   assert.equal(fs.readFileSync(output, 'utf8'), previousPage);
   assert.ok(!fs.readdirSync(dir).some(file => file.endsWith('.tmp')));
 });
@@ -157,12 +157,12 @@ test('invalid options, JSON, event bindings, and path aliases preserve output an
   const alias = path.join(dir, 'input.json');
   fs.linkSync(output, alias);
   assert.match(deliver([alias, output, '--architecture-only']).error!, /aliases input/);
-  const sidecar = path.join(dir, 'project.sources.html');
+  const sidecar = path.join(dir, 'project.constraints.json');
   fs.copyFileSync(example, sidecar);
-  assert.match(deliver([sidecar, output, '--constraints', bad]).error!, /aliases input/);
+  assert.match(deliver([sidecar, output, '--catalog', bad, '--rules', bad, '--repo', dir]).error!, /aliases input/);
   assert.equal(fs.readFileSync(sidecar, 'utf8'), fs.readFileSync(example, 'utf8'));
   fs.rmSync(sidecar); fs.mkdirSync(sidecar);
-  assert.match(deliver([example, output, '--constraints', bad]).error!, /regular file/);
+  assert.match(deliver([example, output, '--catalog', bad, '--rules', bad, '--repo', dir]).error!, /regular file/);
   assert.equal(fs.readFileSync(output, 'utf8'), 'existing page');
 });
 

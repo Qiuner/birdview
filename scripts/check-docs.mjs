@@ -15,7 +15,7 @@ function collect(directory, recursive) {
     }
 }
 collect('', false);
-for (const directory of ['references', 'docs', 'examples', '.github', 'compatibility-audit'])
+for (const directory of ['references', 'docs', 'examples', '.github', 'review-skill', 'compatibility-audit'])
     collect(directory, true);
 const hashes = {};
 const errors = [];

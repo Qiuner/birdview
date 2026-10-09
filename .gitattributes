@@ -1,2 +1,4 @@
 assets/architecture.html text eol=lf
 examples/harness-activity.html text eol=lf
+examples/review.html text eol=lf
+src/render-review.mts text eol=lf

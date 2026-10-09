@@ -5,7 +5,6 @@ import { validate } from './validate.mjs';
 import { compileConstraintRules } from './compile-constraint-rules.mjs';
 import { collectRuleHistory } from './constraint-rule-history.mjs';
 import { renderArchitecture } from './render.mjs';
-import { renderConstraintCatalog } from './render-constraints.mjs';
 export const deliveryUsage = 'Usage: birdview deliver architecture.json project.html [activity.jsonl] (--catalog sources.json --rules reviewed-rules.json --repo root | --constraints reviewed.json | --architecture-only) [--repo root] [--bilingual] [--legacy]';
 // Resolve existing parents too, so a linked output directory cannot alias input.
 function canonical(file) {
@@ -56,7 +55,6 @@ export function deliver(args) {
             throw new Error('--repo must be a directory.');
         const htmlOutput = path.resolve(output);
         receipt.outputs = { html: htmlOutput,
-            ...(!flags.has('--architecture-only') ? { sources: htmlOutput.replace(/\.html$/i, '.sources.html') } : {}),
             ...(compile ? { constraints: htmlOutput.replace(/\.html$/i, '.constraints.json') } : {}) };
         const outputs = Object.values(receipt.outputs);
         const inputs = [input, activity, catalogFile, rulesFile, constraintsFile].filter((file) => !!file).map(file => path.resolve(file));
@@ -106,13 +104,12 @@ export function deliver(args) {
             if (!constraints || !Array.isArray(constraints.rules) || !constraints.ruleReview)
                 throw new Error('--constraints requires a reviewed catalog.');
         }
-        // Prepare every artifact before any output write, including source-page validation.
+        // Prepare every artifact before any output write.
         receipt.stage = 'render';
         const html = renderArchitecture(map, events, { ...(repository ? { repository } : {}),
-            ...(constraints ? { constraintCatalog: constraints, constraintSourceHref: encodeURIComponent(path.basename(receipt.outputs.sources)) } : {}) });
+            ...(constraints ? { constraintCatalog: constraints } : {}) });
         const artifacts = new Map();
         if (constraints) {
-            artifacts.set(receipt.outputs.sources, renderConstraintCatalog(constraints, undefined, { view: 'sources' }));
             if (receipt.outputs.constraints)
                 artifacts.set(receipt.outputs.constraints, JSON.stringify(constraints, null, 2) + '\n');
             receipt.constraints = { rules: constraints.rules.length, snapshot: constraints.project.revision, scope: constraints.ruleReview.scope,

@@ -5,14 +5,13 @@ import { validate, type ValidationResult } from './validate.mjs';
 import { compileConstraintRules } from './compile-constraint-rules.mjs';
 import { collectRuleHistory } from './constraint-rule-history.mjs';
 import { renderArchitecture } from './render.mjs';
-import { renderConstraintCatalog } from './render-constraints.mjs';
 import type { Architecture } from './contracts/models.mjs';
 import type { ConstraintCatalog, ReviewedConstraintCatalog, ReviewedSelection } from './constraint-types.mjs';
 
 export interface DeliveryReceipt {
   ok: boolean;
   stage: 'inputs' | 'validate' | 'compile' | 'history' | 'render' | 'write' | 'complete';
-  outputs: { html: string; sources?: string; constraints?: string } | null;
+  outputs: { html: string; constraints?: string } | null;
   written: string[];
   validation?: ValidationResult;
   map?: { mapId: string; revision: number };
@@ -61,7 +60,6 @@ export function deliver(args: readonly string[]): DeliveryReceipt {
     if (repository && !fs.statSync(repository).isDirectory()) throw new Error('--repo must be a directory.');
     const htmlOutput = path.resolve(output);
     receipt.outputs = { html: htmlOutput,
-      ...(!flags.has('--architecture-only') ? { sources: htmlOutput.replace(/\.html$/i, '.sources.html') } : {}),
       ...(compile ? { constraints: htmlOutput.replace(/\.html$/i, '.constraints.json') } : {}) };
     const outputs = Object.values(receipt.outputs);
     const inputs = [input, activity, catalogFile, rulesFile, constraintsFile].filter((file): file is string => !!file).map(file => path.resolve(file));
@@ -98,13 +96,12 @@ export function deliver(args: readonly string[]): DeliveryReceipt {
       constraints = readJson(constraintsFile) as ReviewedConstraintCatalog;
       if (!constraints || !Array.isArray(constraints.rules) || !constraints.ruleReview) throw new Error('--constraints requires a reviewed catalog.');
     }
-    // Prepare every artifact before any output write, including source-page validation.
+    // Prepare every artifact before any output write.
     receipt.stage = 'render';
     const html = renderArchitecture(map, events, { ...(repository ? { repository } : {}),
-      ...(constraints ? { constraintCatalog: constraints, constraintSourceHref: encodeURIComponent(path.basename(receipt.outputs.sources!)) } : {}) });
+      ...(constraints ? { constraintCatalog: constraints } : {}) });
     const artifacts = new Map<string, string>();
     if (constraints) {
-      artifacts.set(receipt.outputs.sources!, renderConstraintCatalog(constraints, undefined, { view: 'sources' }));
       if (receipt.outputs.constraints) artifacts.set(receipt.outputs.constraints, JSON.stringify(constraints, null, 2) + '\n');
       receipt.constraints = { rules: constraints.rules.length, snapshot: constraints.project.revision, scope: constraints.ruleReview.scope,
         historyGaps: constraints.rules.filter(rule => rule.history?.status !== 'tracked').map(rule => rule.id) };

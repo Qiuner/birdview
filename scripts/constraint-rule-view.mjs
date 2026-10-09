@@ -17,9 +17,9 @@ export const constraintRoles = {
     security: { name: '安全', dark: ['#edb7cb', '#3e2c34', '#916276'], light: ['#bf3058', '#ffebf0', '#df4a72'] },
     generic: { name: '通用', dark: ['#c0d6df', '#303b40', '#718892'], light: ['#526780', '#edf0f5', '#7b8ba4'] },
 };
-export function buildRuleGraph(catalog, sourceHref) {
+export function buildRuleGraph(catalog) {
     if (!Array.isArray(catalog.rules) || !catalog.rules.length || !catalog.ruleReview?.scope) {
-        throw new Error('Rule graph requires reviewed rules and ruleReview.scope. Collecting sources is not rule review. Use --sources for an explicit source index.');
+        throw new Error('Rule graph requires reviewed rules and ruleReview.scope. Collecting sources is not rule review. Review the collected sources before rendering; original text remains available in By directory.');
     }
     const nodes = [], documents = {};
     const ids = new Set();
@@ -114,5 +114,5 @@ export function buildRuleGraph(catalog, sourceHref) {
         directoryNodes.push(...rules.map(rule => ({ ...rule, parent: id })));
     }
     return { schema: 'birdview.constraint-view/v1', mode: 'rules', title: catalog.project.name,
-        revision: catalog.project.revision, scope: coverage, ...(sourceHref ? { sourceHref } : {}), roles: constraintRoles, nodes, directoryNodes, documents };
+        revision: catalog.project.revision, scope: coverage, roles: constraintRoles, nodes, directoryNodes, documents };
 }

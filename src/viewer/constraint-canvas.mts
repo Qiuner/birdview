@@ -386,10 +386,10 @@ export function mountConstraintCanvas(container: HTMLElement, data: ConstraintGr
     grouping.ariaLabel = text('约束分组方式', 'Constraint grouping');
     grouping.options[0]!.textContent = text('按主题', 'By topic');
     grouping.options[1]!.textContent = text('按目录', 'By directory');
-    title.textContent = filterIds ? text('模块关联规则', 'Module-linked rules') : data.mode === 'sources' ? text('来源索引 · 未完成语义审查', 'Source index · Semantic review pending') : text('已整理规则', 'Reviewed rules') + ` · ${data.nodes.filter(node => node.kind === 'rule').length}`;
+    title.textContent = filterIds ? text('模块关联规则', 'Module-linked rules') : text('已整理规则', 'Reviewed rules') + ` · ${data.nodes.filter(node => node.kind === 'rule').length}`;
     title.title = data.scope;
     toggleDirectory.title = toggleDirectory.ariaLabel = text('规则目录', 'Rule directory'); toggleDirectory.setAttribute('aria-expanded', String(directoryOpen));
-    directoryTitle.textContent = data.mode === 'sources' ? text('来源目录', 'Sources') : text('规则目录', 'Rules'); directory.setAttribute('aria-label', directoryTitle.textContent);
+    directoryTitle.textContent = text('规则目录', 'Rules'); directory.setAttribute('aria-label', directoryTitle.textContent);
     directoryClose.ariaLabel = text('收起目录', 'Close directory');
     search.placeholder = text('搜索规则与原文', 'Search rules and sources'); search.ariaLabel = search.placeholder;
     resetFilter.textContent = text('查看全部规则', 'Show all rules'); resetFilter.hidden = !filterIds;

@@ -1,4 +1,71 @@
 import { Type, type Static } from '@sinclair/typebox';
+const reviewText = Type.String({ minLength: 1, maxLength: 4000 });
+// Length limits are layout limits: titles, red-pencil notes and margin notes must fit their slots.
+const reviewShort = (maxLength: number) => Type.String({ minLength: 1, maxLength, pattern: '\\S' });
+const reviewId = Type.String({ pattern: '^[a-z][a-z0-9-]{0,63}$' });
+const reviewPath = Type.String({ minLength: 1, maxLength: 500 });
+const reviewIndexes = Type.Array(Type.Integer({ minimum: 0 }));
+const reviewLiterals = (...values: string[]) => Type.Union(values.map(value => Type.Literal(value)));
+// A diagram node. "deep" exists only in the proposal and names the current nodes it absorbs.
+const reviewNode = Type.Object({
+  id: reviewId, label: reviewShort(40), kind: reviewLiterals('caller', 'module', 'step', 'external', 'deep'),
+  row: Type.Integer({ minimum: 0, maximum: 12 }), column: Type.Integer({ minimum: 0, maximum: 6 }),
+  span: Type.Optional(Type.Integer({ minimum: 1, maximum: 6 })),
+  modules: Type.Array(reviewId), evidence: reviewIndexes,
+  absorbs: Type.Optional(Type.Array(reviewId, { minItems: 1, maxItems: 6 }))
+}, { additionalProperties: false });
+const reviewDiagram = Type.Object({
+  nodes: Type.Array(reviewNode, { minItems: 1, maxItems: 12 }),
+  edges: Type.Array(Type.Object({ from: reviewId, to: reviewId, label: Type.Optional(reviewShort(24)) }, { additionalProperties: false }), { maxItems: 24 }),
+  seams: Type.Optional(Type.Array(Type.Object({ label: reviewShort(24), below: reviewId }, { additionalProperties: false }), { maxItems: 3 })),
+  // Before: the business consequence today. After: the expected result.
+  caption: reviewShort(120)
+}, { additionalProperties: false });
+export const reviewSchema = Type.Object({
+  schemaVersion: Type.Literal('2'),
+  project: reviewText,
+  revision: reviewText,
+  sourceRevision: reviewText,
+  workingTree: Type.Object({ dirty: Type.Array(reviewPath) }, { additionalProperties: false }),
+  baseline: Type.Optional(reviewShort(400)),
+  sources: Type.Array(Type.Object({ path: reviewPath, kind: reviewLiterals('glossary', 'adr', 'rule', 'doc') }, { additionalProperties: false })),
+  architectureBinding: Type.Optional(Type.Object({ mapId: reviewId, revision: Type.Integer({ minimum: 1 }) }, { additionalProperties: false })),
+  scope: reviewText,
+  gaps: Type.Array(reviewText),
+  language: reviewLiterals('zh', 'en'),
+  candidates: Type.Array(Type.Object({
+    id: reviewId, title: reviewShort(28), lede: reviewShort(160), impact: reviewShort(200),
+    strength: reviewLiterals('strong', 'worth-exploring', 'speculative'),
+    dependency: reviewLiterals('in-process', 'local-substitutable', 'ports-adapters', 'external'),
+    modules: Type.Array(reviewId),
+    before: reviewDiagram, after: reviewDiagram,
+    // Each finding is one red-pencil mark on the current diagram.
+    findings: Type.Array(Type.Object({
+      id: reviewId, kind: reviewLiterals('duplicate', 'leak', 'shallow', 'ordering', 'missing-seam'),
+      note: reviewShort(16), detail: reviewShort(400),
+      targets: Type.Array(reviewId, { minItems: 1, maxItems: 4 }), evidence: Type.Array(Type.Integer({ minimum: 0 }), { minItems: 1 }),
+      confidence: reviewLiterals('observed', 'hypothesis')
+    }, { additionalProperties: false }), { minItems: 1, maxItems: 6 }),
+    // What callers must know to use the module: the interface width, before and after.
+    callerKnowledge: Type.Object({
+      before: Type.Array(reviewShort(14), { minItems: 1, maxItems: 6 }),
+      after: Type.Array(reviewShort(14), { maxItems: 6 })
+    }, { additionalProperties: false }),
+    solution: reviewShort(200),
+    deletionTest: Type.Object({ verdict: reviewLiterals('keep', 'remove', 'narrow'), text: reviewShort(200) }, { additionalProperties: false }),
+    wins: Type.Array(Type.Object({ kind: reviewLiterals('locality', 'leverage', 'depth', 'seam', 'testability'), text: reviewShort(60) }, { additionalProperties: false }), { minItems: 1, maxItems: 4 }),
+    verification: Type.Array(reviewShort(120), { minItems: 1, maxItems: 8 }),
+    boundaries: Type.Array(reviewShort(160), { maxItems: 6 }),
+    cost: reviewShort(200),
+    adrConflict: Type.Optional(Type.Object({ path: reviewPath, reason: reviewShort(200) }, { additionalProperties: false })),
+    evidence: Type.Array(Type.Object({
+      path: reviewPath, lines: Type.Object({ start: Type.Integer({ minimum: 1 }), end: Type.Integer({ minimum: 1 }) }, { additionalProperties: false }),
+      symbol: Type.Optional(reviewShort(80)), quote: Type.String({ minLength: 1, maxLength: 2400 }), note: reviewShort(40)
+    }, { additionalProperties: false }), { minItems: 1, maxItems: 12 })
+  }, { additionalProperties: false }), { maxItems: 6 }),
+  recommendation: Type.Union([Type.Null(), Type.Object({ candidate: reviewId, reason: reviewShort(200) }, { additionalProperties: false })])
+}, { additionalProperties: false });
+export type ArchitectureReview = Static<typeof reviewSchema>;
 // Canonical structural contracts. Cross-record semantics remain in validate.mjs.
 export const mapPath = Type.String({ "minLength": 1, "maxLength": 500, "pattern": "^(?!/)(?!.*(?:^|/)(?:\\.\\.?|\\.git)(?:/|$))(?!.*//)(?!.*[\\\\:\\u0000-\\u001f\\u007f])[^/].*[^/]$|^[^./\\\\:\\u0000-\\u001f\\u007f]$" });
 export const mapId = Type.String({ "pattern": "^[a-z][a-z0-9-]{0,63}$" });

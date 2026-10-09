@@ -11,6 +11,7 @@ declare const DATA: {
   simulation?: boolean;
   constraintFreshness?: ConstraintFreshness;
   constraintView?: { graph: ConstraintGraph; snapshot: string; scope: string; rules: Array<{ id: string; modules: string[] }> };
+  reviewHref?: string;
 };
 const { map, icons, brandLogo } = DATA;
 function required<T>(value: T | null | undefined): T {
@@ -24,11 +25,11 @@ function element<T extends Element>(value: Element | null, ctor: { new(...args: 
 function $(id: 'activity-step'): HTMLSelectElement;
 function $(id: 'activity-disclosure'): HTMLDetailsElement;
 function $(id: 'guide-progress'): HTMLProgressElement;
-function $(id: 'connections' | 'overview-connections'): SVGSVGElement;
+function $(id: 'connections'): SVGSVGElement;
 function $(id: string): HTMLElement;
 function $(id: string): HTMLElement | SVGSVGElement {
   const node = document.getElementById(id);
-  if (id === 'connections' || id === 'overview-connections') return element(node, SVGSVGElement);
+  if (id === 'connections') return element(node, SVGSVGElement);
   if (id === 'activity-step') return element(node, HTMLSelectElement);
   if (id === 'activity-disclosure') return element(node, HTMLDetailsElement);
   if (id === 'guide-progress') return element(node, HTMLProgressElement);
@@ -38,8 +39,8 @@ const buttonById = (id: string) => element(document.getElementById(id), HTMLButt
 const query = (selector: string, root: ParentNode = document) => element(root.querySelector(selector), HTMLElement);
 const iconMarkup = (name: string) => required(icons[name]);
 type Group = NonNullable<Architecture['groups']>[number];
-type ViewMode = 'architecture' | 'activity' | 'compare';
-type Edge = { path: SVGPathElement; relation: Relationship; dot: SVGCircleElement; animation?: Animation | undefined };
+type ViewMode = 'architecture' | 'activity';
+type Edge = { path: SVGPathElement; relation: Relationship; dot: SVGCircleElement; label: SVGTextElement; animation?: Animation | undefined };
 
 const roles = {
   frontend: { tone: 'blue', icon: 'panels-top-left', label: '前端' },
@@ -233,33 +234,51 @@ if (map.groups?.length) {
 $('map').style.width = `${width}px`;
 $('map').style.height = `${height}px`;
 let zoom = 1;
+// Automatic fitting never shrinks text below this scale; on screens too small to
+// show the whole map at it, the view centres on the change and the rest pans.
+// The fit button asks for the whole map instead (fitAll) and ignores the floor.
+const readableZoom = .8;
 let fitting = true;
+let fitAll = false;
+let floored = false;
 const viewport = query('.map-scroll');
 function updateZoom() {
   if (fitting) {
     const availableHeight = Math.max(180, Math.min(viewport.clientHeight - 40, window.innerHeight - viewport.getBoundingClientRect().top - 70));
-    zoom = Math.min(1, viewport.clientWidth / width, availableHeight / height);
-  }
+    // Fit may enlarge small maps so large screens are used, but not past legible-text scale.
+    const whole = Math.min(1.5, viewport.clientWidth / width, availableHeight / height);
+    floored = !fitAll && whole < readableZoom;
+    zoom = floored ? readableZoom : whole;
+  } else floored = false;
   $('map').style.transform = `scale(${zoom})`;
   $('map-stage').style.width = `${width * zoom}px`;
   $('map-stage').style.height = `${height * zoom}px`;
-  const overview = document.getElementById('overview-map');
-  if (overview) {
-    overview.style.transform = `scale(${zoom})`;
-    $('overview-stage').style.width = `${width * zoom}px`;
-    $('overview-stage').style.height = `${height * zoom}px`;
-  }
   $('zoom-value').textContent = `${Math.round(zoom * 100)}%`;
   buttonById('zoom-in').disabled = zoom >= 2;
   buttonById('zoom-out').disabled = zoom <= .1;
-  $('fit').setAttribute('aria-pressed', String(fitting));
+  // Pressed means the whole map is on screen.
+  $('fit').setAttribute('aria-pressed', String(fitting && !floored));
+}
+// Scroll so the modules that matter now sit in the middle of a floored view.
+function focusChange() {
+  if (!fitting || !floored) return;
+  const event = activityMode === 'architecture' ? undefined : activityEvents[activityIndex];
+  const ids = event ? (event.targets.length ? event.targets : event.scope) : [];
+  const boxes = ids.map(id => buttons.get(id)).filter((button): button is HTMLButtonElement => Boolean(button));
+  const left = boxes.length ? Math.min(...boxes.map(box => box.offsetLeft)) : 0;
+  const right = boxes.length ? Math.max(...boxes.map(box => box.offsetLeft + box.offsetWidth)) : width;
+  const top = boxes.length ? Math.min(...boxes.map(box => box.offsetTop)) : 0;
+  const bottom = boxes.length ? Math.max(...boxes.map(box => box.offsetTop + box.offsetHeight)) : 0;
+  const stage = $('map-stage').getBoundingClientRect(), frame = viewport.getBoundingClientRect();
+  const stageX = stage.left - frame.left + viewport.scrollLeft, stageY = stage.top - frame.top + viewport.scrollTop;
+  viewport.scrollTo(stageX + (left + right) / 2 * zoom - viewport.clientWidth / 2, boxes.length ? stageY + (top + bottom) / 2 * zoom - viewport.clientHeight / 2 : 0);
 }
 for (const [id, icon] of Object.entries({ 'zoom-in': 'zoom-in', 'zoom-out': 'zoom-out', fit: 'maximize', actual: 'scan' })) $(id).innerHTML = icons[icon] || '';
 $('zoom-in').onclick = () => { fitting = false; zoom = Math.min(2, zoom + .15); updateZoom(); };
 $('zoom-out').onclick = () => { fitting = false; zoom = Math.max(.1, zoom - .15); updateZoom(); };
 $('actual').onclick = () => { fitting = false; zoom = 1; updateZoom(); };
-$('fit').onclick = () => { fitting = true; updateZoom(); viewport.scrollTo(0, 0); document.getElementById('overview-scroll')?.scrollTo(0, 0); };
-new ResizeObserver(() => { if (fitting) updateZoom(); }).observe(viewport);
+$('fit').onclick = () => { fitting = true; fitAll = true; updateZoom(); viewport.scrollTo(0, 0); };
+new ResizeObserver(() => { if (fitting) { updateZoom(); focusChange(); } }).observe(viewport);
 window.addEventListener('resize', () => { if (fitting) updateZoom(); });
 updateZoom();
 const svgNS = 'http://www.w3.org/2000/svg';
@@ -274,6 +293,11 @@ arrow.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z');
 arrow.setAttribute('fill', '#809487');
 marker.append(arrow);
 defs.append(marker);
+// Same head, accent-filled, for relations on the current change path.
+const changeMarker = element(marker.cloneNode(true) as Element, SVGMarkerElement);
+changeMarker.id = 'arrow-change';
+required(changeMarker.firstElementChild).setAttribute('class', 'arrow-change-head');
+defs.append(changeMarker);
 $('connections').append(defs);
 const edges: Edge[] = [];
 let selectedModuleId: string | undefined;
@@ -317,9 +341,10 @@ function updateFlow() {
   for (const edge of edges) {
     edge.path.classList.toggle('relevant', edge.relation.from === activeModuleId || edge.relation.to === activeModuleId);
     const relevant = edge.path.classList.contains('relevant');
-    const visible = relationView.value === 'all' || edge.relation.visibility === 'overview' || relevant || edge.path.classList.contains('constraint-highlight');
+    const visible = relationView.value === 'all' || edge.relation.visibility === 'overview' || relevant || edge.path.classList.contains('constraint-highlight') || edge.path.classList.contains('activity-edge-core') || edge.path.classList.contains('impact-edge');
     edge.path.style.display = visible ? '' : 'none';
     edge.path.classList.toggle('context-muted', Boolean(activeModuleId) && !relevant);
+    edge.label.classList.toggle('context-muted', Boolean(activeModuleId) && !relevant);
     if (visible) visibleCount++;
     const active = visible && flowToggle.checked && !reducedMotion.matches && !document.hidden && relevant;
     edge.dot.style.display = active ? '' : 'none';
@@ -352,7 +377,6 @@ function updateFlow() {
     badge.title = hint;
     button.setAttribute('aria-label', `${localized(module, 'name')}${module.status === 'uncertain' ? `, ${t('待确认')}` : ''}${count ? `, ${hint}` : ''}`);
   }
-  syncOverview();
 }
 flowToggle.onchange = updateFlow;
 reducedMotion.addEventListener('change', updateFlow);
@@ -376,7 +400,17 @@ for (const [relationIndex, relation] of map.relationships.entries()) {
   dot.setAttribute('aria-hidden', 'true');
   dot.style.display = 'none';
   $('connections').append(dot);
-  edges.push({ path, relation, dot });
+  // Change-path label, shown only while the relation carries the current step.
+  const label = document.createElementNS(svgNS, 'text');
+  label.setAttribute('class', 'edge-label');
+  label.setAttribute('aria-hidden', 'true');
+  $('connections').append(label);
+  edges.push({ path, relation, dot, label });
+}
+for (const { path, label } of edges) {
+  const middle = path.getPointAtLength(path.getTotalLength() / 2);
+  label.setAttribute('x', String(middle.x));
+  label.setAttribute('y', String(middle.y - 6));
 }
 const buttons = new Map<string, HTMLButtonElement>();
 for (const module of map.modules) {
@@ -451,6 +485,7 @@ showDetails.innerHTML = icons['panel-right'] || '';
 query('.map-tools').append(showDetails);
 function setInspector(open: boolean) {
   workspace.classList.toggle('inspector-open', open);
+  if (document.getElementById('impact-panel')) syncSidePanel();
   showDetails.setAttribute('aria-expanded', String(open));
   updateConstraints();
   if (fitting) updateZoom();
@@ -499,7 +534,7 @@ let activityMode: ViewMode = activityEvents.length ? 'activity' : 'architecture'
 const activityPanel = document.createElement('section');
 activityPanel.className = 'activity-panel';
 activityPanel.hidden = !activityEvents.length;
-activityPanel.innerHTML = '<div class="activity-toolbar"><div id="activity-mode" role="group"></div><span id="activity-source"></span><div class="activity-history"><button id="activity-prev"></button><select id="activity-step"></select><button id="activity-next"></button><button id="activity-latest"></button></div></div><div id="activity-summary" aria-live="polite"></div><details id="activity-disclosure"><summary></summary><div id="activity-details"></div></details>';
+activityPanel.innerHTML = '<div class="activity-toolbar"><div id="activity-mode" role="group"></div><span id="activity-source"></span><div class="activity-history"><button id="activity-prev"></button><select id="activity-step"></select><button id="activity-next"></button><button id="activity-latest"></button></div><span id="activity-phase"></span></div><div id="activity-summary" aria-live="polite"></div><div id="activity-meta"><div id="activity-targets"></div><details id="activity-disclosure"><summary></summary><div id="activity-details"></div></details></div>';
 query('.workspace').before(activityPanel);
 const mapHeading = query('.map-heading');
 new ResizeObserver(() => workspace.style.setProperty('--toolbar-height', `${mapHeading.offsetHeight}px`)).observe(mapHeading);
@@ -515,16 +550,18 @@ mapTools.replaceChildren(relationTools, zoomTools, showDetails);
 if (activityEvents.length) {
   element(mapHeading.firstElementChild, HTMLElement).hidden = true;
   mapHeading.prepend($('activity-mode'));
+  // Targets share the view-toggle row instead of taking a row of their own.
+  $('activity-mode').after($('activity-meta'));
 }
 required(query('.legend').lastElementChild).before(relationCount);
 query('.activity-toolbar', activityPanel).append($('activity-summary'));
-const viewModes: Record<ViewMode, [string, string, string]> = { architecture: ['完整架构', 'Architecture', 'layers'], activity: ['更改视图', 'Changes', 'focus'], compare: ['并排对照', 'Compare', 'columns-2'] };
+const viewModes: Record<ViewMode, [string, string, string]> = { architecture: ['完整架构', 'Architecture', 'layers'], activity: ['更改视图', 'Changes', 'focus'] };
 for (const [mode, labels] of Object.entries(viewModes)) {
   const button = document.createElement('button');
   button.type = 'button';
   button.dataset.view = mode;
   button.innerHTML = `${icons[labels[2]] || ''}<span>${labels[0]}</span>`;
-  button.onclick = () => { if (mode !== 'architecture' && mode !== 'activity' && mode !== 'compare') throw new Error('Unknown view mode.'); activityMode = mode; hoveredModuleId = undefined; updateActivity(); updateFlow(); };
+  button.onclick = () => { if (mode !== 'architecture' && mode !== 'activity') throw new Error('Unknown view mode.'); activityMode = mode; hoveredModuleId = undefined; updateActivity(); updateFlow(); };
   $('activity-mode').append(button);
 }
 const activityStep = $('activity-step');
@@ -535,8 +572,23 @@ $('activity-prev').onclick = () => { activityIndex = Math.max(0, activityIndex -
 $('activity-next').onclick = () => { activityIndex = Math.min(activityEvents.length - 1, activityIndex + 1); updateActivity(); };
 $('activity-latest').onclick = () => { activityIndex = activityEvents.length - 1; updateActivity(); };
 $('activity-disclosure').ontoggle = () => { if (fitting) updateZoom(); };
+// Details float over the map like a popover, so they close the same way one does.
+document.addEventListener('pointerdown', event => {
+  const disclosure = $('activity-disclosure');
+  if (document.querySelector('dialog[open]')) return; // the guide drives disclosure state itself
+  if (disclosure.open && event.target instanceof Node && !disclosure.contains(event.target)) disclosure.open = false;
+});
+document.addEventListener('keydown', event => {
+  const disclosure = $('activity-disclosure');
+  if (event.key !== 'Escape' || !disclosure.open || document.querySelector('dialog[open]')) return;
+  disclosure.open = false;
+  query('summary', disclosure).focus();
+  event.stopImmediatePropagation();
+}, true);
 
-// Share authored positions and routes; only the right pane gets activity emphasis.
+// The impact view answers one review question: which modules does the
+// declared scope touch directly without naming them? The map marks them and
+// the panel beside it lists each one with the relationship that connects it.
 const mapPanes = document.createElement('div');
 mapPanes.className = 'map-panes';
 viewport.before(mapPanes);
@@ -545,35 +597,161 @@ changePane.className = 'map-pane';
 changePane.innerHTML = '<h2 class="pane-title" id="change-title"></h2>';
 changePane.append(viewport);
 mapPanes.append(changePane);
-if (activityEvents.length) {
-  const overviewPane = document.createElement('section');
-  overviewPane.id = 'overview-pane';
-  overviewPane.className = 'map-pane';
-  overviewPane.hidden = true;
-  overviewPane.innerHTML = '<h2 class="pane-title" id="overview-title"></h2><div class="map-scroll" id="overview-scroll"><div id="overview-stage"></div></div>';
-  mapPanes.prepend(overviewPane);
-  const clone = $('map').cloneNode(true);
-  if (!(clone instanceof HTMLElement)) throw new Error('Invalid map clone.');
-  const overview = clone;
-  for (const element of [overview, ...overview.querySelectorAll('[id]')]) element.id = `overview-${element.id}`;
-  overview.querySelectorAll('[marker-end]').forEach(edge => edge.setAttribute('marker-end', 'url(#overview-arrow)'));
-  overview.querySelectorAll('.flow-dot').forEach(dot => dot.remove());
-  $('overview-stage').append(overview);
-  overview.querySelectorAll<HTMLButtonElement>('.node').forEach(button => {
-    button.onclick = () => {
-      if (constraintPanelOpen) { constraintFilter = 'module'; selectedConstraintId = undefined; }
-      select(required(map.modules.find(module => module.id === button.dataset.module))); setInspector(true);
-    };
-    button.onpointerenter = event => { if (event.pointerType !== 'touch') { hoveredModuleId = button.dataset.module; updateFlow(); } };
-    button.onpointerleave = () => { hoveredModuleId = undefined; updateFlow(); };
-  });
-  for (const [source, destination] of [[viewport, $('overview-scroll')], [$('overview-scroll'), viewport]] as const) {
-    source.addEventListener('scroll', () => {
-      if (activityMode !== 'compare') return;
-      if (destination.scrollLeft !== source.scrollLeft) destination.scrollLeft = source.scrollLeft;
-      if (destination.scrollTop !== source.scrollTop) destination.scrollTop = source.scrollTop;
-    });
+const impactPanel = document.createElement('section');
+impactPanel.id = 'impact-panel';
+impactPanel.hidden = true;
+mapPanes.append(impactPanel);
+// Outside-scope impact is a layer of the changes view. It defaults on for
+// planned steps, when the reader confirms scope, and off while work proceeds;
+// once the reader flips it, their choice holds across steps.
+let impactOverride: boolean | undefined;
+let impactActive = false;
+let impactNeighborCount = 0;
+// Between phone and wide layouts a fixed column would shrink the map below
+// legible size, so the list becomes a drawer over the map, opened from a tab.
+const impactDrawerQuery = window.matchMedia('(min-width: 801px) and (max-width: 1679px)');
+let impactDrawerOpen = false;
+const impactTab = document.createElement('button');
+impactTab.type = 'button';
+impactTab.id = 'impact-drawer-tab';
+impactTab.hidden = true;
+impactTab.setAttribute('aria-controls', 'impact-panel');
+impactTab.onclick = () => { impactDrawerOpen = true; syncSidePanel(); impactPanel.querySelector<HTMLElement>('.impact-close')?.focus(); };
+mapPanes.append(impactTab);
+// The workspace has one side slot. An open inspector takes it; closing the
+// inspector hands it back to the impact list.
+function syncSidePanel() {
+  const show = impactActive && !workspace.classList.contains('inspector-open');
+  const drawer = impactDrawerQuery.matches;
+  mapPanes.classList.toggle('impact', show && !drawer);
+  mapPanes.classList.toggle('impact-drawer', show && drawer);
+  impactPanel.hidden = !show || (drawer && !impactDrawerOpen);
+  impactTab.hidden = !show || !drawer || impactDrawerOpen;
+  impactTab.textContent = `${isChinese() ? '影响范围' : 'Impact'} · ${impactNeighborCount}`;
+  impactTab.setAttribute('aria-expanded', String(drawer && impactDrawerOpen));
+}
+impactDrawerQuery.addEventListener('change', () => syncSidePanel());
+document.addEventListener('keydown', event => {
+  if (event.key !== 'Escape' || !impactDrawerOpen || impactPanel.hidden || !impactDrawerQuery.matches || document.querySelector('dialog[open]')) return;
+  impactDrawerOpen = false;
+  syncSidePanel();
+  impactTab.focus();
+});
+const impactToggle = document.createElement('button');
+impactToggle.type = 'button';
+impactToggle.id = 'impact-toggle';
+impactToggle.onclick = () => {
+  impactOverride = impactToggle.getAttribute('aria-pressed') !== 'true';
+  hoveredModuleId = undefined;
+  updateActivity();
+  updateFlow();
+};
+$('activity-meta').append(impactToggle);
+// Relationships crossing the scope boundary, grouped by the module outside it.
+function impactNeighbors(event: ActivityEvent) {
+  const neighbors = new Map<string, Relationship[]>();
+  for (const relation of map.relationships) {
+    const fromIn = event.scope.includes(relation.from), toIn = event.scope.includes(relation.to);
+    if (fromIn === toIn) continue;
+    const outside = fromIn ? relation.to : relation.from;
+    neighbors.set(outside, [...(neighbors.get(outside) ?? []), relation]);
   }
+  return neighbors;
+}
+// The panel body holds data only; what it means and where it comes from sit
+// behind the heading's info button. Open state survives step re-renders.
+let impactHelpOpen = false;
+function renderImpact(event: ActivityEvent, neighbors: Map<string, Relationship[]>) {
+  const zh = isChinese();
+  const moduleById = (id: string) => required(map.modules.find(module => module.id === id));
+  const heading = document.createElement('div');
+  heading.className = 'impact-heading';
+  const title = document.createElement('h2');
+  title.textContent = zh ? '影响范围' : 'Impact';
+  const help = document.createElement('div');
+  help.id = 'impact-help';
+  help.className = 'impact-help';
+  help.hidden = !impactHelpOpen;
+  for (const text of zh
+    ? ['以计划范围为中心，列出与它直接相连、但没有声明的模块。这些模块可能受这次修改影响，请确认是否需要纳入范围。', '关系来自架构图，不代表已核验的运行时依赖。']
+    : ['Lists modules directly connected to the planned scope but not declared in it. They may be affected by this change; confirm whether they belong in scope.', 'Relationships come from the architecture map, not verified runtime dependencies.']) {
+    const line = document.createElement('p');
+    line.textContent = text;
+    help.append(line);
+  }
+  const info = document.createElement('button');
+  info.type = 'button';
+  info.className = 'impact-info';
+  info.innerHTML = iconMarkup('info');
+  info.title = info.ariaLabel = zh ? '说明' : 'About this panel';
+  info.setAttribute('aria-controls', help.id);
+  info.setAttribute('aria-expanded', String(impactHelpOpen));
+  info.onclick = () => {
+    impactHelpOpen = !impactHelpOpen;
+    help.hidden = !impactHelpOpen;
+    info.setAttribute('aria-expanded', String(impactHelpOpen));
+  };
+  // Only shown in the drawer layout; the wide layout has nothing to close.
+  const close = document.createElement('button');
+  close.type = 'button';
+  close.className = 'impact-close';
+  close.innerHTML = iconMarkup('x');
+  close.title = close.ariaLabel = zh ? '收起影响范围' : 'Close impact list';
+  close.onclick = () => { impactDrawerOpen = false; syncSidePanel(); impactTab.focus(); };
+  heading.append(title, info, close);
+  impactNeighborCount = neighbors.size;
+  const section = (title: string, count: number) => {
+    const block = document.createElement('div');
+    block.className = 'impact-section';
+    const label = document.createElement('div');
+    label.className = 'impact-label';
+    label.textContent = `${title} · ${count}`;
+    block.append(label);
+    return block;
+  };
+  const moduleRow = (id: string, kind: 'scope' | 'neighbor') => {
+    const module = moduleById(id);
+    const row = document.createElement('button');
+    row.type = 'button';
+    row.className = `impact-row ${kind}`;
+    row.dataset.module = id;
+    row.dataset.tone = roles[module.role || 'generic'].tone;
+    const name = document.createElement('strong');
+    name.textContent = localized(module, 'name');
+    row.append(name);
+    if (kind === 'scope' && event.targets.includes(id)) {
+      const tag = document.createElement('span');
+      tag.className = 'impact-tag';
+      tag.textContent = zh ? '当前目标' : 'Current target';
+      row.append(tag);
+    }
+    for (const relation of kind === 'neighbor' ? required(neighbors.get(id)) : []) {
+      const line = document.createElement('small');
+      line.textContent = `${localized(moduleById(relation.from), 'name')} → ${localized(moduleById(relation.to), 'name')} · ${localized(relation, 'label')}`;
+      row.append(line);
+    }
+    row.onclick = () => { select(module); setInspector(true); };
+    row.onpointerenter = () => { hoveredModuleId = id; updateFlow(); };
+    row.onpointerleave = () => { hoveredModuleId = undefined; updateFlow(); };
+    return row;
+  };
+  const scope = section(zh ? '计划范围' : 'Planned scope', event.scope.length);
+  scope.append(...event.scope.map(id => moduleRow(id, 'scope')));
+  const adjacent = section(zh ? '直接相连 · 未声明' : 'Directly connected · not declared', neighbors.size);
+  adjacent.append(...[...neighbors.keys()].map(id => moduleRow(id, 'neighbor')));
+  if (!neighbors.size) {
+    const empty = document.createElement('p');
+    empty.textContent = zh ? '范围之外没有直接相连的模块。' : 'No modules outside the scope connect to it directly.';
+    adjacent.append(empty);
+  }
+  const others = map.modules.filter(module => !event.scope.includes(module.id) && !neighbors.has(module.id));
+  const unrelated = section(zh ? '无直接关系' : 'Not connected', others.length);
+  const names = document.createElement('p');
+  names.className = 'impact-names';
+  names.textContent = others.map(module => localized(module, 'name')).join(zh ? '、' : ', ') || '-';
+  unrelated.append(names);
+  impactPanel.replaceChildren(heading, help, scope, adjacent, unrelated);
+  syncSidePanel();
 }
 for (const scroll of mapPanes.querySelectorAll<HTMLElement>('.map-scroll')) {
   scroll.tabIndex = 0;
@@ -592,58 +770,31 @@ for (const scroll of mapPanes.querySelectorAll<HTMLElement>('.map-scroll')) {
   scroll.addEventListener('pointerup', event => { pan = undefined; if (scroll.hasPointerCapture(event.pointerId)) scroll.releasePointerCapture(event.pointerId); });
 }
 
-function syncOverview() {
-  const overview = document.getElementById('overview-map');
-  if (!overview) return;
-  for (const button of overview.querySelectorAll<HTMLButtonElement>('.node')) {
-    const source = required(buttons.get(required(button.dataset.module)));
-    button.className = source.className;
-    button.classList.remove('activity-outside', 'activity-scope', 'activity-target', 'context-muted');
-    for (const attr of ['title', 'aria-label', 'aria-pressed']) {
-      if (source.hasAttribute(attr)) button.setAttribute(attr, required(source.getAttribute(attr)));
-    }
-    if (button.innerHTML !== source.innerHTML) button.innerHTML = source.innerHTML;
-  }
-  overview.querySelectorAll<HTMLElement>('.group-label').forEach((label, index) => {
-    label.textContent = required(groupFrames[index]).label.textContent;
-    label.title = required(groupFrames[index]).label.title;
-  });
-  overview.querySelectorAll<SVGPathElement>('.edge').forEach((edge, index) => {
-    edge.setAttribute('class', required(edges[index]).path.getAttribute('class') ?? '');
-    edge.classList.remove('activity-edge-outside', 'context-muted');
-    edge.style.display = required(edges[index]).path.style.display;
-    required(edge.querySelector('title')).textContent = required(required(edges[index]).path.querySelector('title')).textContent;
-  });
-  $('overview-connections').style.setProperty('--flow-accent', $('connections').style.getPropertyValue('--flow-accent'));
-}
-
 function updateActivity() {
   const zh = isChinese();
   updateConstraints();
-  document.body.classList.toggle('show-activity-context', activityMode === 'activity');
+  document.body.classList.toggle('show-activity-context', activityEvents.length > 0);
   $('change-title').textContent = viewModes[activityMode === 'architecture' ? 'architecture' : 'activity'][zh ? 0 : 1];
   viewport.setAttribute('aria-label', $('change-title').textContent);
   if (!activityEvents.length) return;
   const event = required(activityEvents[activityIndex]);
   const active = activityMode !== 'architecture';
-  const context = $('activity-context');
-  // View-state policy: only the changes view owns activity history controls.
-  query('.activity-toolbar', activityPanel).hidden = activityMode !== 'activity';
+  // View-state policy: the plan row stays in both views, so switching views never moves the map.
+  query('.activity-toolbar', activityPanel).hidden = false;
   const terminalPhase = ['completed', 'failed', 'cancelled'].includes(event.phase);
   const targetLabel = terminalPhase ? (zh ? '无当前目标' : 'No current targets') : event.phase === 'planned' ? (zh ? '下一步目标' : 'Next-step targets') : event.phase === 'verifying' ? (zh ? '验证目标' : 'Verification targets') : (zh ? '修改目标' : 'Edit targets');
-  mapPanes.classList.toggle('compare', activityMode === 'compare');
-  $('overview-pane').hidden = activityMode !== 'compare';
-  $('overview-title').textContent = viewModes.architecture[zh ? 0 : 1];
-  $('overview-scroll').setAttribute('aria-label', $('overview-title').textContent);
   $('activity-mode').setAttribute('aria-label', zh ? '视图' : 'View');
   for (const button of $('activity-mode').querySelectorAll<HTMLButtonElement>('button')) {
     const mode = button.dataset.view;
-    const labels = mode === 'activity' || mode === 'compare' ? viewModes[mode] : viewModes.architecture;
+    const labels = mode === 'activity' ? viewModes[mode] : viewModes.architecture;
     query('span', button).textContent = required(labels[zh ? 0 : 1]) || labels[0];
     button.setAttribute('aria-pressed', String(button.dataset.view === activityMode));
   }
   activityStep.setAttribute('aria-label', zh ? '活动历史' : 'Activity history');
-  activityStep.replaceChildren(...activityEvents.map((record, index) => new Option(`${record.sequence} · ${record.taskId} · ${phaseNames[record.phase][zh ? 0 : 1]}`, String(index))));
+  // Position and phase are what readers scan for; the task id only matters when the log mixes tasks.
+  const multiTask = new Set(activityEvents.map(record => record.taskId)).size > 1;
+  activityStep.replaceChildren(...activityEvents.map((record, index) => new Option(`${index + 1} / ${activityEvents.length}${multiTask ? ` · ${record.taskId}` : ''} · ${phaseNames[record.phase][zh ? 0 : 1]}`, String(index))));
+  activityStep.title = event.taskId;
   activityStep.value = String(activityIndex);
   for (const [id, labels] of Object.entries({ 'activity-prev': ['上一条', 'Previous record'], 'activity-next': ['下一条', 'Next record'], 'activity-latest': ['最新记录', 'Latest record'] })) $(id).title = $(id).ariaLabel = required(labels[zh ? 0 : 1]);
   buttonById('activity-prev').disabled = activityIndex === 0;
@@ -654,19 +805,37 @@ function updateActivity() {
   query('header .simulation').textContent = source;
   const names = (ids: string[]) => ids.map(id => localized(required(map.modules.find(module => module.id === id)), 'name')).join(', ');
   $('activity-summary').textContent = localized(event, 'reason');
-  $('activity-context-label').textContent = zh ? '当前修改' : 'Current change';
-  $('activity-context-summary').textContent = localized(event, 'reason');
-  const contextDetails = $('activity-context-details');
-  contextDetails.replaceChildren();
-  query('summary', $('activity-disclosure')).textContent = `${targetLabel}${terminalPhase ? '' : ` · ${event.targets.length}`} · ${zh ? '详情' : 'Details'}`;
+  query('summary', $('activity-disclosure')).textContent = zh ? '详情' : 'Details';
+  $('activity-phase').textContent = required(phaseNames[event.phase][zh ? 0 : 1]);
+  $('activity-phase').dataset.phase = event.phase;
+  // Target chips name the modules in reach of this step and link back to the map.
+  const chips = $('activity-targets');
+  const chipsLabel = document.createElement('span');
+  chipsLabel.className = 'activity-targets-label';
+  chipsLabel.textContent = targetLabel;
+  chips.replaceChildren(chipsLabel);
+  for (const id of terminalPhase ? [] : event.targets) {
+    const module = required(map.modules.find(item => item.id === id));
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'activity-chip';
+    chip.dataset.tone = roles[module.role || 'generic'].tone;
+    chip.textContent = localized(module, 'name');
+    chip.onclick = () => { select(module); setInspector(true); };
+    chip.onpointerenter = () => { hoveredModuleId = id; updateFlow(); };
+    chip.onpointerleave = () => { hoveredModuleId = undefined; updateFlow(); };
+    chips.append(chip);
+  }
   const details = $('activity-details');
   details.replaceChildren();
   const fields: [string, string][] = [
+    // Targets are already shown as chips beside the toggle.
     [zh ? '计划范围' : 'Planned scope', names(event.scope)],
-    [targetLabel, terminalPhase ? '-' : names(event.targets)],
     [zh ? '本步骤文件（声明）' : 'Step files (declared)', event.files.join('\n') || '-'],
     [zh ? '未归属文件' : 'Unmapped files', event.unmappedFiles.join('\n') || '-'],
-    [zh ? '验证记录' : 'Checks', event.checks.map(check => `${check.command}\n${check.status} · exit ${check.exitCode ?? '-'} · ${localized(check, 'summary')}`).join('\n\n') || (zh ? '未记录验证结果' : 'No checks recorded')]
+    [zh ? '验证记录' : 'Checks', event.checks.map(check => `${check.command}\n${check.status} · exit ${check.exitCode ?? '-'} · ${localized(check, 'summary')}`).join('\n\n') || (zh ? '未记录验证结果' : 'No checks recorded')],
+    [zh ? 'Git 提交' : 'Git commit', event.gitCommit || '-'],
+    [zh ? '发生时间' : 'Timestamp', ('timestamp' in event && typeof event.timestamp === 'string' ? event.timestamp : '') || '-']
   ];
   for (const [label, value] of fields) {
     const field = document.createElement('div');
@@ -674,42 +843,75 @@ function updateActivity() {
     const content = document.createElement('div'); content.textContent = value;
     field.append(heading, content); details.append(field);
   }
-  const contextFields: [string, string][] = [
-    [targetLabel, terminalPhase ? '-' : names(event.targets)],
-    [zh ? '计划范围' : 'Planned scope', names(event.scope)],
-    [zh ? '文件' : 'Files', event.files.join('\n') || '-'],
-    [zh ? 'Git 提交' : 'Git commit', event.gitCommit || '-'],
-    [zh ? '发生时间' : 'Timestamp', ('timestamp' in event && typeof event.timestamp === 'string' ? event.timestamp : '') || '-'],
-    [zh ? '验证' : 'Checks', event.checks.map(check => `${check.status} · ${localized(check, 'summary')}`).join('\n') || (zh ? '未记录' : 'Not recorded')]
-  ];
-  for (const [label, value] of contextFields) {
-    const field = document.createElement('div');
-    const heading = document.createElement('strong'); heading.textContent = label;
-    const content = document.createElement('div'); content.textContent = value;
-    field.append(heading, content); contextDetails.append(field);
-  }
-  context.hidden = activityMode !== 'activity';
-  $('activity-summary').hidden = $('activity-disclosure').hidden = activityMode !== 'activity';
+  $('activity-summary').hidden = false;
+  $('activity-meta').hidden = activityMode !== 'activity';
+  const phaseLabel = required(phaseNames[event.phase][zh ? 0 : 1]);
+  // Impact layers onto the changes view: targets keep their emphasis, the rest
+  // of the scope stays at full strength and undeclared neighbours are marked.
+  const impact = activityMode === 'activity' && (impactOverride ?? event.phase === 'planned');
+  impactActive = impact;
+  syncSidePanel();
+  impactToggle.setAttribute('aria-pressed', String(impact));
+  impactToggle.textContent = zh ? '范围外影响' : 'Outside-scope impact';
+  impactToggle.title = zh ? '标出与计划范围直接相连但未声明的模块' : 'Mark modules directly connected to the planned scope but not declared';
+  const neighbors = impact ? impactNeighbors(event) : new Map<string, Relationship[]>();
+  if (impact) renderImpact(event, neighbors);
   for (const [id, button] of buttons) {
+    const inScope = event.scope.includes(id);
     const target = !terminalPhase && event.targets.includes(id);
-    button.classList.toggle('activity-outside', active && !target);
-    button.classList.toggle('activity-scope', active && event.scope.includes(id));
+    button.classList.toggle('activity-outside', active && !target && !(impact && (inScope || neighbors.has(id))));
+    button.classList.toggle('activity-scope', active && inScope);
     button.classList.toggle('activity-target', active && target);
+    button.classList.toggle('impact-neighbor', impact && neighbors.has(id));
+    // Callout: the declared step files this module owns, so each highlighted
+    // node says what part of the plan lands on it.
+    button.querySelector('.change-callout')?.remove();
+    const module = required(map.modules.find(item => item.id === id));
+    const owned = target ? event.files.filter(file => module.ownership.some(owner => file === owner.path || file.startsWith(`${owner.path.replace(/\/$/, '')}/`))) : [];
+    if (!owned.length) continue;
+    const callout = document.createElement('span');
+    callout.className = 'change-callout';
+    callout.dataset.phase = event.phase;
+    callout.textContent = `${phaseLabel} · ${owned.map(file => file.split('/').at(-1)).join(', ')}`;
+    callout.title = owned.join('\n');
+    button.append(callout);
   }
-  for (const edge of edges) edge.path.classList.toggle('activity-edge-outside', active &&
-    (terminalPhase || !event.targets.includes(edge.relation.from) && !event.targets.includes(edge.relation.to)));
+  // Change path: relations that join a current target to another module in the
+  // planned scope. They carry the step, so they get an accent and a label.
+  const inChange = (id: string) => !terminalPhase && event.scope.includes(id);
+  for (const edge of edges) {
+    const { from, to } = edge.relation;
+    const touchesTarget = !terminalPhase && (event.targets.includes(from) || event.targets.includes(to));
+    const fromIn = event.scope.includes(from), toIn = event.scope.includes(to);
+    // Impact: relations inside the scope are labelled; ones crossing its edge are flagged.
+    const core = impact ? fromIn && toIn : active && touchesTarget && inChange(from) && inChange(to);
+    const boundary = impact && fromIn !== toIn;
+    edge.path.classList.toggle('activity-edge-outside', active && (impact ? !core && !boundary : !touchesTarget));
+    edge.path.classList.toggle('activity-edge-core', core);
+    edge.path.classList.toggle('impact-edge', boundary);
+    edge.path.setAttribute('marker-end', core ? 'url(#arrow-change)' : 'url(#arrow)');
+    edge.label.textContent = localized(edge.relation, 'label');
+    edge.label.classList.toggle('visible', core);
+    // A label longer than its edge would sit under the nodes; lift it into the
+    // row gap above them instead.
+    const middleY = edge.path.getPointAtLength(edge.path.getTotalLength() / 2).y;
+    const short = core && edge.label.getComputedTextLength() + 16 > edge.path.getTotalLength();
+    edge.label.setAttribute('y', String(short ? middleY - 44 : middleY - 6));
+  }
   const legend = required(query('.legend').lastElementChild);
   legend.replaceChildren();
   if (active) {
-    for (const [kind, label] of [['planned', zh ? '计划范围' : 'Planned scope'], ['active', targetLabel], ['', zh ? '非当前目标' : 'Other modules']] as const) {
+    const entries = impact
+      ? [['planned', zh ? '计划范围' : 'Planned scope'], ['neighbor', zh ? '直接相连 · 未声明' : 'Connected · not declared'], ['', zh ? '无直接关系' : 'Not connected']] as const
+      : [['planned', zh ? '计划范围' : 'Planned scope'], ['active', targetLabel], ['', zh ? '非当前目标' : 'Other modules']] as const;
+    for (const [kind, label] of entries) {
       const entry = document.createElement('span');
       const swatch = document.createElement('i'); swatch.className = kind;
       entry.append(swatch, document.createTextNode(label)); legend.append(entry);
     }
   } else legend.textContent = source;
-  syncOverview();
   updateZoom();
-  if (activityMode === 'compare') $('overview-scroll').scrollTo(viewport.scrollLeft, viewport.scrollTop);
+  focusChange();
 }
 
 const constraintRules = map.constraints || [];
@@ -983,33 +1185,33 @@ guideDialog.setAttribute('aria-labelledby', 'guide-title');
 guideDialog.setAttribute('aria-describedby', 'guide-copy');
 guideDialog.innerHTML = '<div id="guide-spot" aria-hidden="true"></div><section id="guide-card"><div class="guide-top"><span id="guide-count" aria-live="polite"></span><button id="guide-close">×</button></div><progress id="guide-progress"></progress><h2 id="guide-title"></h2><p id="guide-copy"></p><div class="guide-actions"><button id="guide-prev"></button><button id="guide-skip"></button><button id="guide-next" class="primary"></button></div></section>';
 document.body.append(guideDialog);
-type GuideStep = 'architecture' | 'constraints' | 'activity' | 'compare' | 'details' | 'history';
+type GuideStep = 'architecture' | 'constraints' | 'activity' | 'impact' | 'details' | 'history';
 const hasConstraintGuide = Boolean(DATA.constraintView);
 const guideSteps: GuideStep[] = activityEvents.length
-  ? ['architecture', ...(hasConstraintGuide ? ['constraints' as const] : []), 'activity', 'compare', 'details', 'history']
+  ? ['architecture', ...(hasConstraintGuide ? ['constraints' as const] : []), 'activity', 'impact', 'details', 'history']
   : ['architecture', ...(hasConstraintGuide ? ['constraints' as const] : []), 'details'];
 const guideCopy: Record<GuideStep, [string, string, string, string]> = {
   architecture: ['完整架构', '了解系统有哪些模块，以及它们如何连接。分组底色表示职责类别，不表示修改状态。', 'Architecture', 'See the system modules and their connections. Group backgrounds classify responsibilities, not change status.'],
   constraints: ['查看约束', '约束视图把已审查的规则按主题和来源展开；颜色表示适用角色，不代表通过或失败。点击规则可阅读适用条件、解释、验证方式和原文依据。', 'Inspect constraints', 'The constraints view groups reviewed rules by topic and source. Colors show applicable roles, not pass or fail. Select a rule to read its condition, explanation, verification and source evidence.'],
   activity: ['本次修改', '亮起的是所选步骤的目标，灰色模块不是当前目标；验证阶段的亮起表示验证目标。终态不再高亮目标。', 'Current changes', 'Bright modules are targets of the selected step; gray modules are not. During verification, highlights mean verification targets. Terminal steps clear highlights.'],
-  compare: ['同时对照', '完整架构与更改视图并排展示，选择、缩放和滚动保持联动。窄屏时上下排列。', 'Compare views', 'Compare architecture and changes with linked selection, zoom and scrolling. Narrow screens stack the views.'],
+  impact: ['范围外影响', '标出与计划范围直接相连、但没有声明的模块，用来检查范围是否遗漏。计划步骤默认打开。', 'Outside-scope impact', 'Marks modules connected to the planned scope but not declared, to check for missed scope. On by default for planned steps.'],
   details: ['查看依据', '点击模块可查看职责、文件归属与源码证据。悬浮模块可追踪直接连接，工具栏可切换全部关系或适配全图。', 'Inspect evidence', 'Select a module for responsibilities, file ownership and source evidence. Hover to trace direct connections; use the toolbar for all relations or fit to view.'],
   history: ['跟踪过程', '历史记录展示计划、编辑和验证步骤。展开详情查看文件和检查结果；任务完成不代表检查通过。', 'Follow progress', 'History shows planning, editing and verification steps. Expand details for files and check results; completion alone does not prove checks passed.']
 };
 let guideIndex = 0;
 interface GuideSaved {
-  mode: ViewMode; index: number; selected: string | undefined; inspector: boolean; zoom: number; fitting: boolean; disclosure: boolean;
+  mode: ViewMode; impactOverride: boolean | undefined; index: number; selected: string | undefined; inspector: boolean; zoom: number; fitting: boolean; fitAll: boolean; disclosure: boolean;
   focus: Element | null; x: number; y: number; panes: [HTMLElement, number, number][];
   constraints: {open: boolean; selected: string | undefined; filter: string}; projectView: 'architecture' | 'constraints';
 }
 let guideSaved: GuideSaved | undefined;
 let guideTarget: HTMLElement | undefined;
 let guideFrame = 0;
-const guideViewState: Record<GuideStep, {mode: ViewMode; inspector: boolean; history: boolean}> = {
+const guideViewState: Record<GuideStep, {mode: ViewMode; inspector: boolean; history: boolean; impact?: boolean}> = {
   architecture: { mode: 'architecture', inspector: false, history: false },
   constraints: { mode: 'architecture', inspector: false, history: false },
-  activity: { mode: 'activity', inspector: false, history: false },
-  compare: { mode: 'compare', inspector: false, history: false },
+  activity: { mode: 'activity', inspector: false, history: false, impact: false },
+  impact: { mode: 'activity', inspector: false, history: false, impact: true },
   details: { mode: 'architecture', inspector: true, history: false },
   history: { mode: 'activity', inspector: false, history: true }
 };
@@ -1069,18 +1271,20 @@ function showGuideStep(animate = false) {
   hoveredModuleId = undefined;
   setInspector(state.inspector);
   activityMode = state.mode;
-  if (step === 'activity') {
+  impactOverride = state.impact ?? saved.impactOverride;
+  if (step === 'activity' || step === 'impact') {
     const plan = activityEvents.findIndex(event => event.phase === 'planned' && event.targets.length);
     activityIndex = plan >= 0 ? plan : saved.index;
   } else activityIndex = saved.index;
   $('activity-disclosure').open = state.history;
   fitting = true;
+  fitAll = false;
   updateActivity();
   updateFlow();
   updateZoom();
   if (step === 'details') select(map.modules.find(module => module.id === saved.selected) || required(map.modules[0]));
   guideTarget = step === 'constraints' ? (query('#project-views') || query('#show-constraints'))
-    : step === 'details' ? inspector : step === 'history' ? activityPanel : step === 'compare' ? $('activity-mode') : step === 'activity' ? viewport : activityEvents.length ? query('[data-view="architecture"]') : viewport;
+    : step === 'details' ? inspector : step === 'history' ? activityPanel : step === 'impact' ? impactToggle : step === 'activity' ? viewport : activityEvents.length ? query('[data-view="architecture"]') : viewport;
   guideTarget.scrollIntoView({ block: 'nearest', behavior: 'instant' });
   guideLabels();
   positionGuide();
@@ -1103,7 +1307,7 @@ function dismissGuideInvite() {
 function startGuide() {
   if (guideDialog.open) return;
   dismissGuideInvite();
-  guideSaved = { mode: activityMode, index: activityIndex, selected: selectedModuleId, inspector: workspace.classList.contains('inspector-open'), zoom, fitting, disclosure: $('activity-disclosure').open, focus: document.activeElement, x: scrollX, y: scrollY, constraints: {open: constraintPanelOpen, selected: selectedConstraintId, filter: constraintFilter}, projectView: new URLSearchParams(location.hash.slice(1)).get('view') === 'constraints' ? 'constraints' : 'architecture', panes: [...mapPanes.querySelectorAll<HTMLElement>('.map-scroll')].map(el => [el, el.scrollLeft, el.scrollTop]) };
+  guideSaved = { mode: activityMode, impactOverride, index: activityIndex, selected: selectedModuleId, inspector: workspace.classList.contains('inspector-open'), zoom, fitting, fitAll, disclosure: $('activity-disclosure').open, focus: document.activeElement, x: scrollX, y: scrollY, constraints: {open: constraintPanelOpen, selected: selectedConstraintId, filter: constraintFilter}, projectView: new URLSearchParams(location.hash.slice(1)).get('view') === 'constraints' ? 'constraints' : 'architecture', panes: [...mapPanes.querySelectorAll<HTMLElement>('.map-scroll')].map(el => [el, el.scrollLeft, el.scrollTop]) };
   guideIndex = 0;
 
   constraintPanelOpen = false;
@@ -1118,6 +1322,7 @@ function finishGuide() {
   const saved = required(guideSaved);
   if (DATA.constraintView) element(query(`#project-views button:nth-child(${saved.projectView === 'constraints' ? 2 : 1})`), HTMLButtonElement).click();
   activityMode = saved.mode;
+  impactOverride = saved.impactOverride;
   activityIndex = saved.index;
   constraintPanelOpen = saved.constraints.open;
   selectedConstraintId = saved.constraints.selected;
@@ -1130,6 +1335,7 @@ function finishGuide() {
   zoom = saved.zoom;
   updateZoom();
   fitting = saved.fitting;
+  fitAll = saved.fitAll;
   for (const [el, x, y] of saved.panes) el.scrollTo(x, y);
   window.scrollTo(saved.x, saved.y);
   (saved.focus instanceof HTMLElement && saved.focus.isConnected && !saved.focus.closest('#guide-invite') ? saved.focus : guideLaunch).focus({ preventScroll: true });
@@ -1148,14 +1354,30 @@ document.addEventListener('scroll', repositionGuide, true);
 new ResizeObserver(() => { cancelAnimationFrame(guideFrame); guideFrame = requestAnimationFrame(positionGuide); }).observe($('guide-card'));
 guideLabels();
 
-if (DATA.constraintView) {
-  const view = DATA.constraintView;
-  const main = query('body > main');
+// Project views: architecture always; constraints when a reviewed catalog is embedded;
+// review when a sibling review page was rendered. All share one switcher.
+if (DATA.constraintView || DATA.reviewHref) {
   const nav = document.createElement('nav'); nav.id = 'project-views';
   const architecture = document.createElement('button');
-  const constraints = document.createElement('button');
-  architecture.type = constraints.type = 'button'; nav.append(architecture, constraints);
+  architecture.type = 'button'; architecture.setAttribute('aria-pressed', 'true'); nav.append(architecture);
   query('header .task').after(nav);
+  const review = DATA.reviewHref ? document.createElement('a') : undefined;
+  const labels = (): void => {
+    nav.setAttribute('aria-label', isChinese() ? '项目视图' : 'Project views');
+    architecture.textContent = isChinese() ? '架构' : 'Architecture';
+    if (review) review.textContent = isChinese() ? '评审' : 'Review';
+  };
+  if (review) { review.href = DATA.reviewHref!; nav.append(review); }
+  labels();
+  new MutationObserver(labels).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
+  if (DATA.constraintView) mountConstraintView(nav, architecture, review);
+}
+function mountConstraintView(nav: HTMLElement, architecture: HTMLButtonElement, review: HTMLAnchorElement | undefined): void {
+  const view = required(DATA.constraintView);
+  const main = query('body > main');
+  const constraints = document.createElement('button');
+  constraints.type = 'button';
+  nav.insertBefore(constraints, review ?? null);
   main.id = 'architecture-view'; architecture.setAttribute('aria-controls', main.id);
   const panel = document.createElement('section'); panel.id = 'constraint-view'; panel.hidden = true;
   constraints.setAttribute('aria-controls', panel.id); main.after(panel);

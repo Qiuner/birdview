@@ -6,9 +6,9 @@ import { build } from 'esbuild';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const check = process.argv.slice(2).includes('--check');
 try {
-    for (const module of ['routing', 'i18n', 'main', 'constraint-canvas', 'theme', 'site']) {
+    for (const module of ['routing', 'i18n', 'main', 'constraint-canvas', 'theme', 'site', 'review']) {
         const format = module === 'routing' || module === 'i18n' ? 'esm' : 'iife';
-        const target = module === 'main' ? 'assets/viewer.js' : module === 'constraint-canvas' ? 'assets/constraint-canvas.js' : module === 'theme' ? 'assets/theme.js' : module === 'site' ? 'docs/site.js' : `scripts/viewer/${module}.mjs`;
+        const target = module === 'review' ? 'assets/review.js' : module === 'main' ? 'assets/viewer.js' : module === 'constraint-canvas' ? 'assets/constraint-canvas.js' : module === 'theme' ? 'assets/theme.js' : module === 'site' ? 'docs/site.js' : `scripts/viewer/${module}.mjs`;
         const source = module === 'site' ? 'src/site/main.mts' : `src/viewer/${module}.mts`;
         const result = await build({
             absWorkingDir: root,

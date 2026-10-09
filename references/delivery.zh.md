@@ -8,14 +8,14 @@
 node scripts/birdview.mjs deliver architecture.json project.html --catalog constraints.catalog.json --rules reviewed-rules.json --repo /path/to/repository
 ```
 
-输出 `project.html`、`project.sources.html` 和 `project.constraints.json`，也须保留原始来源清单与审查选择。来源收集和 AI 语义审查在此命令**之前**完成；命令不推断规则，也不确认覆盖完整性。集成交付无需先生成独立来源页或独立约束图；辅助来源页在这里一起生成。
+输出 `project.html` 和 `project.constraints.json`，也须保留原始来源清单与审查选择。来源收集和 AI 语义审查在此命令**之前**完成；命令不推断规则，也不确认覆盖完整性。集成交付无需先生成独立来源页或独立约束图；来源原文在集成页面的“按目录”中阅读。
 
 三种路线必须且只能选一种：
 
 | 路线 | 参数 | 输出 |
 | --- | --- | --- |
-| 编译已审查选择 | `--catalog sources.json --rules reviewed-rules.json --repo root` | 集成 HTML、来源 HTML、带历史的编译清单 |
-| 复用匹配的已审查清单 | `--constraints project.constraints.json` | 集成 HTML 和来源 HTML |
+| 编译已审查选择 | `--catalog sources.json --rules reviewed-rules.json --repo root` | 集成 HTML、带历史的编译清单 |
+| 复用匹配的已审查清单 | `--constraints project.constraints.json` | 集成 HTML |
 | 明确仅架构或已披露规则不可用 | `--architecture-only` | 架构 HTML |
 
 复用不刷新规则历史，须先检查范围、快照和绑定。复用及仅架构路线可选 `--repo root`，用于现有地图约束的新鲜度检查，不证明整张地图当前有效。规则清单不可用仍须注明限制，不得声称默认交付已完整完成。

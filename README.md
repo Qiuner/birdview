@@ -19,6 +19,7 @@
   <a href="#how-it-works">How It Works</a> ·
   <a href="examples/harness-activity.html">Live Demo</a> ·
   <a href="https://qiuner.github.io/birdview/">Project Site</a> ·
+  <a href="https://atomgit.com/Qiuner/birdview">AtomGit Mirror</a> ·
   <a href="README.zh.md">简体中文</a>
 </p>
 

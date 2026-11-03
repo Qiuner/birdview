@@ -19,6 +19,7 @@
   <a href="#工作原理">工作原理</a> ·
   <a href="examples/harness-activity.html">交互演示</a> ·
   <a href="https://qiuner.github.io/birdview/">项目介绍页</a> ·
+  <a href="https://atomgit.com/Qiuner/birdview">AtomGit 镜像</a> ·
   <a href="README.md">English</a>
 </p>
 

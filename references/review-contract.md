@@ -11,9 +11,10 @@ The review page is an annotated drawing: ink draws source facts, red pencil mark
 Field names and types; limits are in the sections below. Ids match `^[a-z][a-z0-9-]{0,63}$`. Text fields are strings and lists of text are string arrays. `evidence` on nodes and findings holds zero-based indexes into the same candidate's `evidence` list. Rows and columns are zero-based grid cells; empty leading rows and columns are dropped when drawing.
 
 ```text
-{ schemaVersion: "2", project, revision: string, sourceRevision, workingTree: { dirty: [path] },
+{ schemaVersion: "3", project, revision: string, sourceRevision, workingTree: { dirty: [path] },
   baseline?, sources: [{ path, kind }], architectureBinding?: { mapId, revision: integer },
   scope, gaps: [text], language, recommendation: null | { candidate: candidateId, reason },
+  verdict: { grade, headline, reasons: [{ text, candidates?: [candidateId] }] },
   candidates: [{ id, title, lede, impact, strength, dependency, modules: [moduleId],
     before: Diagram, after: Diagram,
     findings: [{ id, kind, note, detail, targets: [nodeId], evidence: [index], confidence }],
@@ -27,12 +28,21 @@ Diagram = { nodes: [{ id, label, kind, row, column, span?, modules: [moduleId], 
 
 ## Report
 
-- schemaVersion is "2"; project is the actual project name; revision identifies this review; sourceRevision records the inspected commit.
+- schemaVersion is "3" (adds the required verdict; "2" is no longer accepted); project is the actual project name; revision identifies this review; sourceRevision records the inspected commit.
 - workingTree.dirty lists relevant uncommitted files at inspection time (project-relative, may be empty). Optional baseline explains unfinished earlier changes and what this round treats as the current state.
 - sources lists the glossaries, decision records, rules and documents read (kind glossary, adr, rule or doc); record missing ones in gaps. scope states what was inspected, gaps the known gaps.
 - language is zh or en and controls only interface text; content is not translated.
 - candidates may be empty, at most 6, ordered by expected value. recommendation is null or {candidate, reason}; recommend only when evidence supports it.
 - For `--review` integration, architectureBinding must match {mapId, revision}, and candidate and node modules must be existing map module IDs. Standalone rendering needs no binding.
+
+## Verdict
+
+verdict is the direct conclusion at the top of the page, before any drawing: is the reviewed scope in good shape right now?
+
+- grade has three levels: healthy (nothing needs priority attention), needs-work (worthwhile but not urgent problems), at-risk (problems likely to cause missed edits, wrong edits or failures). No numeric score.
+- headline is a one-sentence conclusion of at most 40 characters, conclusion first.
+- reasons holds 1 to 3 reasons of at most 120 characters; optional candidates lists the candidate ids supporting each reason, shown as links to their sheets.
+- The verdict must agree with the candidates: a strong candidate with an observed finding rules out healthy, and at-risk needs at least one reason that cites a candidate. With no candidates, healthy is allowed; state what was checked.
 
 ## Candidate
 
@@ -52,7 +62,7 @@ Diagram = { nodes: [{ id, label, kind, row, column, span?, modules: [moduleId], 
 
 ## Validation
 
-Structural validation rejects: duplicate ids; overlapping node cells; edges, seams, findings or absorbs naming unknown nodes; invalid evidence indexes; deep, or module and step nodes without evidence, in the current drawing; a recommendation naming an unknown candidate; paths that are not project-relative; text longer than its slot.
+Structural validation rejects: verdicts that contradict the candidates; duplicate ids; overlapping node cells; edges, seams, findings or absorbs naming unknown nodes; invalid evidence indexes; deep, or module and step nodes without evidence, in the current drawing; a recommendation naming an unknown candidate; paths that are not project-relative; text longer than its slot.
 
 `--repo` checks source quotes line by line, ignoring trailing whitespace: a quote passes if it matches the file at sourceRevision or, failing that, the working tree, so uncommitted code under review can be cited (list such files in workingTree.dirty). Any mismatch or missing file is an error and no page is written. Without `--repo` the page still renders, but quotes are marked as not checked. Neither check judges whether the business conclusions are right.
 

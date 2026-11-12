@@ -22,7 +22,7 @@ const reviewDiagram = Type.Object({
     caption: reviewShort(120)
 }, { additionalProperties: false });
 export const reviewSchema = Type.Object({
-    schemaVersion: Type.Literal('2'),
+    schemaVersion: Type.Literal('3'),
     project: reviewText,
     revision: reviewText,
     sourceRevision: reviewText,
@@ -63,7 +63,16 @@ export const reviewSchema = Type.Object({
             symbol: Type.Optional(reviewShort(80)), quote: Type.String({ minLength: 1, maxLength: 2400 }), note: reviewShort(40)
         }, { additionalProperties: false }), { minItems: 1, maxItems: 12 })
     }, { additionalProperties: false }), { maxItems: 6 }),
-    recommendation: Type.Union([Type.Null(), Type.Object({ candidate: reviewId, reason: reviewShort(200) }, { additionalProperties: false })])
+    recommendation: Type.Union([Type.Null(), Type.Object({ candidate: reviewId, reason: reviewShort(200) }, { additionalProperties: false })]),
+    // The direct answer shown before any drawing: is the reviewed scope in good shape?
+    verdict: Type.Object({
+        grade: reviewLiterals('healthy', 'needs-work', 'at-risk'),
+        headline: reviewShort(40),
+        reasons: Type.Array(Type.Object({
+            text: reviewShort(120),
+            candidates: Type.Optional(Type.Array(reviewId, { minItems: 1, maxItems: 6 }))
+        }, { additionalProperties: false }), { minItems: 1, maxItems: 3 })
+    }, { additionalProperties: false })
 }, { additionalProperties: false });
 // Canonical structural contracts. Cross-record semantics remain in validate.mjs.
 export const mapPath = Type.String({ "minLength": 1, "maxLength": 500, "pattern": "^(?!/)(?!.*(?:^|/)(?:\\.\\.?|\\.git)(?:/|$))(?!.*//)(?!.*[\\\\:\\u0000-\\u001f\\u007f])[^/].*[^/]$|^[^./\\\\:\\u0000-\\u001f\\u007f]$" });

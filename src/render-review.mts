@@ -64,6 +64,12 @@ export function validateReview(value: unknown): asserts value is ArchitectureRev
     }
   }
   if (value.recommendation && !candidates.has(value.recommendation.candidate)) throw new Error(`Recommendation names an unknown candidate: ${value.recommendation.candidate}`);
+  // The verdict must agree with the evidence on the sheets below it.
+  const { verdict } = value;
+  for (const reason of verdict.reasons) for (const id of reason.candidates ?? []) if (!candidates.has(id)) throw new Error(`Verdict reason names an unknown candidate: ${id}`);
+  const observedStrong = value.candidates.some(c => c.strength === 'strong' && c.findings.some(f => f.confidence === 'observed'));
+  if (verdict.grade === 'healthy' && observedStrong) throw new Error('A healthy verdict contradicts a strong candidate with observed findings');
+  if (verdict.grade === 'at-risk' && !verdict.reasons.some(r => r.candidates?.length)) throw new Error('An at-risk verdict needs a reason that cites a candidate');
 }
 
 // Compare each quote with the cited lines: the reviewed commit first, then the working tree, so
@@ -289,6 +295,10 @@ export function renderReview(value: unknown, { quotes, views }: ReviewRenderOpti
 
   const rec = r.recommendation ? r.candidates.findIndex(c => c.id === r.recommendation!.candidate) : -1;
   const recommendation = rec >= 0 ? `<div class="recommend"><span class="hand">${t('建议先做', 'Start with')}</span><b>${num(rec)} · ${escape(r.candidates[rec]!.title)}</b><span>${escape(r.recommendation!.reason)}</span><button type="button" data-goto="${rec}">${t('查看', 'Open')}</button></div>` : '';
+  const grades: Record<string, string> = { healthy: t('健康', 'Healthy'), 'needs-work': t('需要改进', 'Needs work'), 'at-risk': t('有风险', 'At risk') };
+  const index = new Map(r.candidates.map((c, i) => [c.id, i]));
+  const refs = (ids: string[] = []) => ids.filter(id => index.has(id)).map(id => `<button type="button" class="ref" data-goto="${index.get(id)}">${num(index.get(id)!)}</button>`).join('');
+  const verdictBlock = `<section class="verdict" data-grade="${r.verdict.grade}" aria-label="${t('总评', 'Verdict')}"><div class="grade"><span class="label">${t('总评', 'Verdict')}</span><b>${grades[r.verdict.grade]}</b></div><div class="body"><h1>${escape(r.verdict.headline)}</h1><ol class="reasons">${r.verdict.reasons.map(reason => `<li><span>${escape(reason.text)}</span>${refs(reason.candidates)}</li>`).join('')}</ol>${recommendation}</div></section>`;
   const tabs = r.candidates.length > 1 ? `<nav class="tabs" aria-label="${t('评审候选', 'Review candidates')}">${r.candidates.map((c, i) => `<button type="button" data-goto="${i}" aria-pressed="${i === 0}"><span>${num(i)}</span>${escape(c.title)}</button>`).join('')}</nav>` : '';
   const empty = `<div class="empty"><h1>${t('未发现有充分依据的改进候选', 'No sufficiently supported improvement candidates')}</h1><p>${t('已检查的范围列在下方；证据不足的设想不会作为候选列出。', 'The checked scope is listed below; ideas without sufficient evidence are not listed as candidates.')}</p></div>`;
   const version = (JSON.parse(read('package.json')) as { version: string }).version;
@@ -305,7 +315,7 @@ ${r.workingTree.dirty.length ? `<h4>${t('工作区未提交改动', 'Uncommitted
     ? `<nav class="views" aria-label="${t('项目视图', 'Project views')}"><a href="${escape(views.architectureHref)}">${t('架构', 'Architecture')}</a>${views.constraints ? `<a href="${escape(views.architectureHref)}#view=constraints">${t('约束', 'Constraints')}</a>` : ''}<a aria-current="page">${t('评审', 'Review')}</a></nav>`
     : `<span class="chip">${t('架构评审', 'Architecture review')}</span>`;
   const header = `<header class="app-header"><img src="${dataUrl('assets/brand/logo-192.png', 'image/png')}" alt="" width="34" height="34"><span class="project">${escape(r.project)}</span>${nav}<div class="actions"><button type="button" class="theme-toggle" aria-label="${t('切换明暗主题', 'Toggle light or dark theme')}"><span class="sun">${icon('sun')}</span><span class="moon">${icon('moon')}</span></button></div></header>`;
-  const intro = `<div class="intro"><p class="strip">${t('架构评审', 'Architecture review')} · ${escape(r.revision)}<span>${t(`${r.candidates.length} 个候选`, `${r.candidates.length} candidates`)}</span></p>${r.baseline ? `<p class="baseline"><b>${t('本轮基线', 'Baseline')}</b>${escape(r.baseline)}</p>` : ''}${recommendation}${tabs}</div>`;
+  const intro = `<div class="intro"><p class="strip">${t('架构评审', 'Architecture review')} · ${escape(r.revision)}<span>${t(`${r.candidates.length} 个候选`, `${r.candidates.length} candidates`)}</span></p>${verdictBlock}${r.baseline ? `<p class="baseline"><b>${t('本轮基线', 'Baseline')}</b>${escape(r.baseline)}</p>` : ''}${tabs}</div>`;
   return `<!doctype html><html lang="${r.language}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escape(r.project)} · ${t('架构评审', 'Architecture review')} · Birdview</title><link rel="icon" href="${dataUrl('assets/brand/favicon-32.png', 'image/png')}"><script>${read('assets/theme.js')}</script><style>${read('assets/review.css')}</style></head><body>${header}<main class="page">${intro}${sheets || empty}${footer}</main><script>${read('assets/review.js')}</script></body></html>`;
 }
 

@@ -11,9 +11,10 @@
 字段名和类型如下，长度和数量限制见后面各节。id 须匹配 `^[a-z][a-z0-9-]{0,63}$`。文字字段是字符串，文字列表是字符串数组。节点和批注里的 `evidence` 是下标，从 0 开始，指向同一候选的 `evidence` 列表。row 和 column 是从 0 开始的格子坐标；绘图时会去掉前面空着的行和列。
 
 ```text
-{ schemaVersion: "2", project, revision: string, sourceRevision, workingTree: { dirty: [path] },
+{ schemaVersion: "3", project, revision: string, sourceRevision, workingTree: { dirty: [path] },
   baseline?, sources: [{ path, kind }], architectureBinding?: { mapId, revision: integer },
   scope, gaps: [text], language, recommendation: null | { candidate: candidateId, reason },
+  verdict: { grade, headline, reasons: [{ text, candidates?: [candidateId] }] },
   candidates: [{ id, title, lede, impact, strength, dependency, modules: [moduleId],
     before: Diagram, after: Diagram,
     findings: [{ id, kind, note, detail, targets: [nodeId], evidence: [index], confidence }],
@@ -27,12 +28,21 @@ Diagram = { nodes: [{ id, label, kind, row, column, span?, modules: [moduleId], 
 
 ## 报告
 
-- schemaVersion 为 "2"；project 为真实项目名；revision 标识评审版本；sourceRevision 记录已检查的提交。
+- schemaVersion 为 "3"（新增必填 verdict；不再接受 "2"）；project 为真实项目名；revision 标识评审版本；sourceRevision 记录已检查的提交。
 - workingTree.dirty 列出检查时未提交的相关文件（项目相对路径，可为空）。baseline 可选，说明上一轮未完成的改动以及本轮把什么当作现状。
 - sources 列出读过的术语表、架构决策、规则和文档（kind 为 glossary、adr、rule、doc）；没找到的写进 gaps。scope 说明检查范围，gaps 说明已知缺口。
 - language 为 zh 或 en，只决定界面文字，内容不会自动翻译。
 - candidates 可为空，最多 6 个，按预期价值排序。recommendation 为 null，或 {candidate, reason}，只在有证据时推荐。
 - 组合 `--review` 时 architectureBinding 必须匹配 {mapId, revision}；候选和节点的 modules 必须是地图里已有的模块 ID。独立渲染无需绑定。
+
+## 总评
+
+verdict 是页面最上方、所有图纸之前的直接结论，回答“本次评审范围现在好不好”。
+
+- grade 只分三档：healthy（健康，没有需要优先处理的问题）、needs-work（需要改进，有值得做但不紧急的问题）、at-risk（有风险，存在会导致漏改、误改或故障的问题）。不打分。
+- headline 是一句话结论，不超过 40 字，先讲结论再讲原因。
+- reasons 为 1 到 3 条理由，每条不超过 120 字；candidates 可选，列出支撑这条理由的候选 id，页面上显示为可跳转的图纸编号。
+- 结论须与候选一致：存在 strength 为 strong 且有 observed 批注的候选时，不能判 healthy；判 at-risk 时，至少一条理由要引用候选。没有候选时可以判 healthy，理由写明检查了什么。
 
 ## 候选
 
@@ -52,7 +62,7 @@ Diagram = { nodes: [{ id, label, kind, row, column, span?, modules: [moduleId], 
 
 ## 校验
 
-结构校验拒绝：重复 id；节点格子重叠；连线、接缝、批注、吸收关系指向不存在的节点；无效证据下标；现状图里出现 deep 或缺证据的 module、step；推荐不存在的候选；非项目相对路径；超出版面的长度。
+结构校验拒绝：与候选矛盾的总评；重复 id；节点格子重叠；连线、接缝、批注、吸收关系指向不存在的节点；无效证据下标；现状图里出现 deep 或缺证据的 module、step；推荐不存在的候选；非项目相对路径；超出版面的长度。
 
 `--repo` 逐行核对源码引用（忽略行尾空白）：先和 sourceRevision 提交里的文件比较，对不上再和工作区比较，任一处一致即通过，因此可以引用评审范围内尚未提交的代码（这些文件要写进 workingTree.dirty）。任何不一致或找不到文件都会报错，不生成页面。不加 `--repo` 时页面照常生成，但引用标为「未核对」。结构校验和引用核对都不判断业务结论是否正确。
 

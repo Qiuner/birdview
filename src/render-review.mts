@@ -320,7 +320,8 @@ export function renderReview(value: unknown, { quotes, views }: ReviewRenderOpti
     const evidence = c.evidence.map((e, k) => {
       const q = quotes?.[i]?.[k];
       const status = q?.state === 'verified' ? `<span class="verified">${icon('check')}${t('已与源码核对', 'Matches source')}</span>` : `<span class="unchecked">${t('未核对', 'Not checked')}</span>`;
-      const numbered = e.quote.replace(/\r\n?/g, '\n').split('\n').map((line, n) => `<span class="ln">${e.lines.start + n}</span>${escape(line)}`).join('\n');
+      // One block per source line: wrapped text hangs under its own code indent, not under the line number.
+      const numbered = e.quote.replace(/\r\n?/g, '\n').split('\n').map((line, n) => `<span class="cl" style="--i:${line.match(/^[ \t]*/)![0].replace(/\t/g, '  ').length}"><span class="ln">${e.lines.start + n}</span><span class="code">${escape(line) || ' '}</span></span>`).join('');
       return `<details class="slip"><summary class="slip-head"><code>${escape(e.path)} · ${e.lines.start}–${e.lines.end}</code>${e.symbol ? `<span>${escape(e.symbol)}</span>` : ''}<span class="hand-note">${escape(e.note)}</span>${status}</summary><pre>${numbered}</pre></details>`;
     }).join('');
     const findings = c.findings.map((f, k) => `<li><span class="hand-num">${CIRCLED[k]}</span><div><b>${escape(f.note)}</b><span class="conf" data-confidence="${f.confidence}">${confidence[f.confidence]}</span><p>${escape(f.detail)}</p></div></li>`).join('');
@@ -341,15 +342,15 @@ export function renderReview(value: unknown, { quotes, views }: ReviewRenderOpti
     <p class="caption">${escape(c.after.caption)}</p></div>
   <div class="evidence"><p class="cap"><b>${t('源码依据', 'Source evidence')}</b>${t(`${c.evidence.length} 处 · 点开看原文`, `${c.evidence.length} quotes · open to read`)}</p>${evidence}</div>
 </div>
-<div class="prose">
-  <div><h4>${t('方案', 'Solution')}</h4><p>${escape(c.solution)}</p></div>
-  <div><h4>${t('删除测试', 'Deletion test')} · ${verdict[c.deletionTest.verdict]}</h4><p class="hand-note">${escape(c.deletionTest.text)}</p></div>
-  <div><h4>${t('不改变', 'Unchanged')}</h4>${c.boundaries.length ? list(c.boundaries, 'plain') : `<p>${t('未列出', 'None listed')}</p>`}</div>
-</div>
-<div class="prose">
-  <div><h4>${t('收益', 'Wins')}</h4><ul class="wins">${c.wins.map(w => `<li><b>${win[w.kind]}</b>${escape(w.text)}</li>`).join('')}</ul></div>
-  <div><h4>${t('迁移代价', 'Migration cost')}</h4><p>${escape(c.cost)}</p></div>
-  <div>${c.adrConflict ? `<h4>${t('与既有决策冲突', 'Conflicts with a recorded decision')}</h4><p><code>${escape(c.adrConflict.path)}</code> ${escape(c.adrConflict.reason)}</p>` : ''}</div>
+<div class="argument">
+  <div class="solution"><h4>${t('方案', 'Solution')}</h4><p>${escape(c.solution)}</p></div>
+  <div class="cards">
+    <div class="card gain"><h4>${t('收益', 'Wins')}</h4><ul class="wins">${c.wins.map(w => `<li><b>${win[w.kind]}</b>${escape(w.text)}</li>`).join('')}</ul></div>
+    <div class="card cost"><h4>${t('迁移代价', 'Migration cost')}</h4><p>${escape(c.cost)}</p></div>
+    <div class="card"><h4>${t('不改变', 'Unchanged')}</h4>${c.boundaries.length ? list(c.boundaries, 'plain') : `<p>${t('未列出', 'None listed')}</p>`}</div>
+    <div class="card"><h4>${t('删除测试', 'Deletion test')}<span class="tag">${verdict[c.deletionTest.verdict]}</span></h4><p>${escape(c.deletionTest.text)}</p></div>
+    ${c.adrConflict ? `<div class="card conflict"><h4>${t('与既有决策冲突', 'Conflicts with a recorded decision')}</h4><p><code>${escape(c.adrConflict.path)}</code> ${escape(c.adrConflict.reason)}</p></div>` : ''}
+  </div>
 </div>
 <div class="verify"><h4>${t('通过 Interface 验证', 'Verify through the interface')}</h4>${list(c.verification, 'checks')}</div>
 </section>`;

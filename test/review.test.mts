@@ -110,6 +110,11 @@ test('red-pencil notes keep clear of nodes and of each other, and evidence start
   }
   const html = renderReview(fixture());
   assert.ok(html.includes('<details class="slip">') && !html.includes('<details class="slip" open'));
+  // Each quoted line is its own block carrying its indent, so wrapped text hangs under the code.
+  const lines = fixture().candidates.reduce((n, c) => n + c.evidence.reduce((m, e) => m + e.lines.end - e.lines.start + 1, 0), 0);
+  assert.equal((html.match(/<span class="cl" style="--i:\d+">/g) ?? []).length, lines);
+  // The solution leads the argument, before the supporting cards.
+  assert.ok(html.indexOf('class="solution"') < html.indexOf('class="cards"'));
 });
 
 test('review page escapes source, marks unchecked quotes and supports no candidates', () => {

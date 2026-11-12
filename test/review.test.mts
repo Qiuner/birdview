@@ -95,6 +95,23 @@ test('drawings drop empty leading cells and wrap absorbed chips instead of squee
   assert.equal((html.match(/<rect class="inner"/g) ?? []).length, 5);
 });
 
+test('red-pencil notes keep clear of nodes and of each other, and evidence starts folded', () => {
+  for (const [i, c] of fixture().candidates.entries()) {
+    const one = fixture(); one.candidates = [c]; one.recommendation = null; one.verdict.reasons = [{ text: 'One sheet.' }];
+    const svg = renderReview(one).match(/<svg viewBox[\s\S]*?<\/svg>/)![0];
+    const rects = [...svg.matchAll(/<rect class="(?:box[^"]*|deep)" x="([\d.]+)" y="([\d.]+)" width="([\d.]+)" height="([\d.]+)"/g)].map(m => ({ x: +m[1]!, y: +m[2]!, w: +m[3]!, h: +m[4]! }));
+    const notes = [...svg.matchAll(/<text class="hand" x="([\d.]+)" y="([\d.]+)">([^<]*)</g)].map(m => ({ x: +m[1]!, y: +m[2]! - 20, w: [...m[3]!].length * 19 + 8, h: 26 }));
+    assert.equal(notes.length, c.findings.length, `sheet ${i}`);
+    const overlap = (a: typeof notes[0], b: typeof notes[0]) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+    for (const n of notes) {
+      assert.ok(!rects.some(r => overlap(n, r)), `sheet ${i}: a note covers a node`);
+      assert.ok(notes.filter(m => m !== n).every(m => !overlap(n, m)), `sheet ${i}: notes overlap`);
+    }
+  }
+  const html = renderReview(fixture());
+  assert.ok(html.includes('<details class="slip">') && !html.includes('<details class="slip" open'));
+});
+
 test('review page escapes source, marks unchecked quotes and supports no candidates', () => {
   const r = fixture(); first(r).evidence[0]!.quote = '</script><img src=x onerror=alert(1)>';
   const html = renderReview(r);

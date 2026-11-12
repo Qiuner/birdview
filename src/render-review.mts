@@ -196,35 +196,97 @@ function diagramSvg(c: Candidate, side: 'before' | 'after', uid: string, t: (zh:
   let marks = '';
   if (side === 'before') {
     // Red pencil: one mark per finding, numbered to match the notes beside the drawing.
-    const placed: { x: number; y: number; w: number; h: number }[] = [...boxes.values()];
-    const hits = (r: { x: number; y: number; w: number; h: number }) => placed.some(p => r.x < p.x + p.w && r.x + r.w > p.x && r.y < p.y + p.h && r.y + r.h > p.y);
-    const note = (text: string, x: number, y: number): string => {
-      const w = [...text].length * 19 + 8, r = { x: Math.max(6, Math.min(x, width - w - 6)), y: y - 20, w, h: 26 };
-      while (hits(r)) r.y += 26;
-      placed.push(r); height = Math.max(height, r.y + r.h + 14);
-      return `<text class="hand" x="${r.x}" y="${r.y + 20}">${escape(text)}</text>`;
+    // Notes keep clear of nodes (with room for the pencil loops), connectors and earlier notes.
+    type Rect = { x: number; y: number; w: number; h: number };
+    const placed: Rect[] = [...boxes.values()].map(b => ({ x: b.x - 12, y: b.y - 12, w: b.w + 24, h: b.h + 24 }));
+    // Wires are drawn as vertical and horizontal runs; each run is a thin obstacle.
+    const runs = (d: string): Rect[] => {
+      const out: Rect[] = []; let x = 0, y = 0;
+      for (const [, op, v] of d.matchAll(/([MVH])\s*([\d.\-]+(?:\s+[\d.\-]+)?)/g)) {
+        const [p, q] = v!.split(/\s+/).map(Number);
+        if (op === 'M') { x = p!; y = q!; continue; }
+        const nx = op === 'H' ? p! : x, ny = op === 'V' ? p! : y;
+        out.push({ x: Math.min(x, nx) - 4, y: Math.min(y, ny) - 4, w: Math.abs(nx - x) + 8, h: Math.abs(ny - y) + 8 });
+        x = nx; y = ny;
+      }
+      return out;
     };
-    c.findings.forEach((f, i) => {
-      const ts = f.targets.map(target => boxes.get(target)!), u = union(ts), label = `${CIRCLED[i]} ${f.note}`;
+    // Notes may cross thin wires (they carry a paper-colored halo) but not nodes, marks or other notes.
+    const routes = d.edges.map(e => route(boxes.get(e.from)!, boxes.get(e.to)!));
+    const wires = routes.flatMap(r => runs(r.d));
+    // Edge labels are text too; a note must not sit on one.
+    const labels: Rect[] = d.edges.flatMap((e, k) => e.label ? [{ x: routes[k]!.lx - 4, y: routes[k]!.ly - 16, w: textWidth(e.label) + 8, h: 22 }] : []);
+    const touches = (r: Rect, p: Rect) => r.x < p.x + p.w && r.x + r.w > p.x && r.y < p.y + p.h && r.y + r.h > p.y;
+    const hits = (r: Rect) => placed.some(p => touches(r, p)) || labels.some(p => touches(r, p));
+    const notes: string[] = [];
+    const note = (text: string, x: number, y: number): void => {
+      const w = [...text].length * 19 + 8, h = 26;
+      const at = (dx: number, dy: number): Rect => ({ x: Math.max(6, Math.min(x + dx, width - w - 6)), y: Math.max(4, y - 20 + dy), w, h });
+      // Among free spots, prefer the one crossing the fewest wires, then the one nearest the mark.
+      let r: Rect | undefined, best = Infinity;
+      for (const dy of [0, 14, -14, 28, -28, 42, -42, 56, -56, 84, 112]) for (const dx of [0, -40, 40, -80, 80, -140, 140, -220, 220]) {
+        const c = at(dx, dy);
+        if (hits(c)) continue;
+        const cost = wires.filter(p => touches(c, p)).length * 120 + Math.abs(dx) * .6 + Math.abs(dy);
+        if (cost < best) { best = cost; r = c; }
+      }
+      if (!r) { r = at(0, 0); while (hits(r)) r.y += h; }
+      placed.push(r); height = Math.max(height, r.y + r.h + 14);
+      notes.push(`<text class="hand" x="${r.x}" y="${r.y + 20}">${escape(text)}</text>`);
+    };
+    const findings = c.findings.map((f, i) => ({ f, i, ts: f.targets.map(target => boxes.get(target)!) }));
+    // Draw every mark first so that all notes can avoid all of them.
+    const pending: (() => void)[] = [];
+    for (const { f, i, ts } of findings) {
+      const u = union(ts), label = `${CIRCLED[i]} ${f.note}`;
       if (f.kind === 'duplicate') {
         marks += ts.map(b => `<path class="red" d="${loop(b, 10)}"/>`).join('');
-        for (let k = 1; k < ts.length; k++) { const a = ts[k - 1]!, b = ts[k]!; marks += `<path class="red" d="M${a.cx} ${a.y + a.h + 10} C ${a.cx} ${a.y + a.h + 44}, ${b.cx} ${b.y + b.h + 44}, ${b.cx} ${b.y + b.h + 10}"/>`; }
-        marks += note(label, (u.x + u.w / 2) - 80, u.y + u.h + 52);
+        for (let k = 1; k < ts.length; k++) {
+          const a = ts[k - 1]!, b = ts[k]!;
+          if (Math.abs(a.cy - b.cy) < 2) {
+            // Side by side: a sagging connector below both loops.
+            marks += `<path class="red" d="M${a.cx} ${a.y + a.h + 10} C ${a.cx} ${a.y + a.h + 44}, ${b.cx} ${b.y + b.h + 44}, ${b.cx} ${b.y + b.h + 10}"/>`;
+            placed.push({ x: Math.min(a.cx, b.cx), y: Math.min(a.y + a.h, b.y + b.h) + 8, w: Math.abs(a.cx - b.cx), h: 30 });
+          } else {
+            // Stacked or diagonal: a bracket on the outer side, so it never runs through the loops.
+            const [hi, lo] = a.cy < b.cy ? [a, b] : [b, a], gx = Math.min(Math.max(hi.x + hi.w, lo.x + lo.w) + 22, width - 6);
+            marks += `<path class="red" d="M${hi.x + hi.w + 12} ${hi.cy} C ${gx} ${hi.cy}, ${gx} ${hi.cy}, ${gx} ${hi.cy + 14} V${lo.cy - 14} C ${gx} ${lo.cy}, ${gx} ${lo.cy}, ${lo.x + lo.w + 12} ${lo.cy}"/>`;
+            placed.push({ x: Math.min(hi.x + hi.w, lo.x + lo.w), y: hi.cy - 4, w: gx - Math.min(hi.x + hi.w, lo.x + lo.w) + 6, h: lo.cy - hi.cy + 8 });
+          }
+        }
+        pending.push(() => note(label, (u.x + u.w / 2) - 80, u.y + u.h + 62));
       } else if (f.kind === 'leak') {
         marks += `<path class="red" d="${loop(u, 12)}"/><path class="red" d="M${u.x + u.w + 8} ${u.y + u.h + 8} l 34 30" marker-end="url(#${uid}-rh)"/>`;
-        marks += note(label, u.x + u.w + 30, u.y + u.h + 58);
+        placed.push({ x: u.x + u.w + 4, y: u.y + u.h + 4, w: 42, h: 38 });
+        pending.push(() => note(label, u.x + u.w + 30, u.y + u.h + 58));
       } else if (f.kind === 'shallow') {
         marks += ts.map(b => `<path class="red" d="M${b.x - 6} ${b.y + b.h + 4} L${b.x + b.w + 6} ${b.y - 4}"/>`).join('');
-        marks += note(label, u.x + u.w + 16, u.y + 22);
+        pending.push(() => note(label, u.x + u.w + 16, u.y + 22));
       } else if (f.kind === 'ordering') {
         marks += ts.map(b => { let p = `M${b.x} ${b.y + b.h + 8}`; for (let x = b.x; x < b.x + b.w; x += 16) p += ` q 4 -6 8 0 q 4 6 8 0`; return `<path class="red" d="${p}"/>`; }).join('');
-        marks += note(label, u.x, u.y + u.h + 40);
+        pending.push(() => note(label, u.x, u.y + u.h + 40));
       } else {
-        const a = ts[0]!, b = ts[1] ?? ts[0]!;
-        marks += `<path class="red dashed" d="M${a.cx} ${a.cy} L${b.cx} ${b.cy}"/>`;
-        marks += note(label, (a.cx + b.cx) / 2 + 8, (a.cy + b.cy) / 2);
+        // Missing seam: a dashed line through a gutter beside the nodes, never across them.
+        // Try both gutters and keep the route that crosses the fewest other nodes.
+        const a = ts[0]!, b = ts[1] ?? ts[0]!, top = Math.min(a.y, b.y), bottom = Math.max(a.y + a.h, b.y + b.h);
+        const others = [...boxes.values()].filter(x => x !== a && x !== b);
+        const between = [...boxes.values()].filter(x => x.y < bottom && x.y + x.h > top);
+        const overlap = (s: Rect, o: Rect) => s.x + 4 < o.x + o.w && s.x + s.w - 4 > o.x && s.y + 4 < o.y + o.h && s.y + s.h - 4 > o.y;
+        const crossings = (path: string) => runs(path).reduce((n, s) => n + others.filter(o => overlap(s, o)).length * 10 + wires.filter(w => overlap(s, w)).length, 0);
+        const options = [true, false].map(right => {
+          const gx = right ? Math.min(Math.max(...between.map(x => x.x + x.w)) + 14, width - 6) : Math.max(Math.min(...between.map(x => x.x)) - 14, 6);
+          const path = `M${right ? a.x + a.w : a.x} ${a.cy} H${gx} V${b.cy} H${right ? b.x + b.w : b.x}`;
+          return { right, gx, path, cost: crossings(path) * 1000 + Math.abs(gx - a.cx) + Math.abs(gx - b.cx) };
+        }).sort((p, q) => p.cost - q.cost);
+        const best = options[0]!;
+        marks += `<path class="red dashed" d="${best.path}"/>`;
+        placed.push(...runs(best.path));
+        const lw = [...label].length * 19 + 8;
+        pending.push(() => note(label, best.right ? best.gx - lw - 10 : best.gx + 10, (a.cy + b.cy) / 2 + 8));
       }
-    });
+    }
+    pending.forEach(place => place());
+    marks += notes.join('');
   }
   // Keep the bottom-right corner free for the title block (current) or the seal (proposal).
   height += side === 'before' ? 80 : 56;
@@ -259,7 +321,7 @@ export function renderReview(value: unknown, { quotes, views }: ReviewRenderOpti
       const q = quotes?.[i]?.[k];
       const status = q?.state === 'verified' ? `<span class="verified">${icon('check')}${t('已与源码核对', 'Matches source')}</span>` : `<span class="unchecked">${t('未核对', 'Not checked')}</span>`;
       const numbered = e.quote.replace(/\r\n?/g, '\n').split('\n').map((line, n) => `<span class="ln">${e.lines.start + n}</span>${escape(line)}`).join('\n');
-      return `<article class="slip"><div class="slip-head"><code>${escape(e.path)} · ${e.lines.start}–${e.lines.end}</code>${e.symbol ? `<span>${escape(e.symbol)}</span>` : ''}${status}</div><pre>${numbered}</pre><p class="hand-note">${escape(e.note)}</p></article>`;
+      return `<details class="slip"><summary class="slip-head"><code>${escape(e.path)} · ${e.lines.start}–${e.lines.end}</code>${e.symbol ? `<span>${escape(e.symbol)}</span>` : ''}<span class="hand-note">${escape(e.note)}</span>${status}</summary><pre>${numbered}</pre></details>`;
     }).join('');
     const findings = c.findings.map((f, k) => `<li><span class="hand-num">${CIRCLED[k]}</span><div><b>${escape(f.note)}</b><span class="conf" data-confidence="${f.confidence}">${confidence[f.confidence]}</span><p>${escape(f.detail)}</p></div></li>`).join('');
     return `<section class="sheet-page" data-sheet="${i}"${i ? ' hidden' : ''}>
@@ -277,7 +339,7 @@ export function renderReview(value: unknown, { quotes, views }: ReviewRenderOpti
   <div><p class="cap"><b>${t('誊清稿', 'Clean redraw')}</b>${t('候选职责 · 未实施', 'Proposed responsibilities · not implemented')}</p>
     <div class="sheet">${diagramSvg(c, 'after', `${uid}a`, t)}<span class="seal">${t('建议稿', 'Proposal')}</span></div>
     <p class="caption">${escape(c.after.caption)}</p></div>
-  <div class="evidence">${evidence}</div>
+  <div class="evidence"><p class="cap"><b>${t('源码依据', 'Source evidence')}</b>${t(`${c.evidence.length} 处 · 点开看原文`, `${c.evidence.length} quotes · open to read`)}</p>${evidence}</div>
 </div>
 <div class="prose">
   <div><h4>${t('方案', 'Solution')}</h4><p>${escape(c.solution)}</p></div>

@@ -64,12 +64,18 @@ h1{font:800 42px/1.15 var(--sans);letter-spacing:-.02em;margin:0 0 12px}
 .margin-notes{font-family:var(--hand);color:var(--red);font-size:20px;line-height:1.55}
 .margin-notes h3{font:inherit;font-size:22px;margin:4px 0 8px}.margin-notes ol{margin:0;padding-left:1.4em}
 .margin-notes .after{margin-top:22px;color:var(--ink)}
-.evidence{display:grid;gap:16px;margin-top:30px}
-.slip{background:var(--sheet);border:1px solid var(--rule);padding:12px 14px 14px;min-width:0}
-.slip-head{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;color:var(--ink-2);margin-bottom:6px}.slip-head code{font-size:12px}
+.evidence{display:grid;gap:8px;margin-top:0}.evidence>.cap{margin-bottom:4px}
+.slip{background:var(--sheet);border:1px solid var(--rule);padding:0;min-width:0}
+.slip-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 12px;font-size:12px;color:var(--ink-2);padding:10px 14px;cursor:pointer;list-style:none}.slip-head::-webkit-details-marker{display:none}
+.slip-head::before{content:"▸";color:var(--pencil);transition:transform .15s}.slip[open]>.slip-head::before{transform:rotate(90deg)}
+.slip-head code{font-size:12px}.slip-head .hand-note{flex-basis:100%;order:5;margin:2px 0 0 1.1em;font-size:16px}
+.slip-head:hover{background:var(--red-soft)}.slip-head:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.slip pre{padding:0 14px 14px}
 .slip-head .verified,.slip-head .unchecked{margin-left:auto;display:inline-flex;align-items:center;gap:4px}.slip-head .verified .icon{width:13px;height:13px}
 .slip-head .unchecked{color:var(--red)}
 .slip pre{margin:0;font:12.5px/1.65 var(--mono);white-space:pre-wrap;overflow-wrap:anywhere}
+@media(min-width:901px){.redraw>div:first-child{position:sticky;top:16px}}
+@media print{.slip pre{display:block}}
 .slip .ln{display:inline-block;width:3.2em;color:var(--pencil);user-select:none}
 .hand-note{font-family:var(--hand);color:var(--red);font-size:17px;margin:8px 0 0}
 .prose{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:32px;margin-top:40px;border-top:1px solid var(--rule);padding-top:22px}
@@ -91,7 +97,7 @@ h1{font:800 42px/1.15 var(--sans);letter-spacing:-.02em;margin:0 0 12px}
 .deep{fill:var(--deep);stroke:var(--emph);stroke-width:3.2}.inner{fill:none;stroke:var(--ink-2);stroke-dasharray:3 3}
 .seam{stroke:var(--ink-2);stroke-dasharray:2 5}.seam-label{font:italic 11.5px var(--sans);fill:var(--ink-2)}
 .red{fill:none;stroke:var(--red);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}.red.dashed{stroke-dasharray:6 6}.rh{fill:none;stroke:var(--red);stroke-width:1.8}
-.hand{font:20px var(--hand);fill:var(--red)}
+.hand{font:20px var(--hand);fill:var(--red);paint-order:stroke;stroke:var(--sheet);stroke-width:6px;stroke-linejoin:round}
 .node.linked .box,.node.linked .deep{stroke:var(--accent);stroke-width:2.4}
 @media(max-width:900px){.row,.prose,.foot{grid-template-columns:1fr}.checks{columns:1}.head{grid-template-columns:1fr}.no{font-size:72px}h1{font-size:30px}.page{padding:22px 16px 60px}.app-header{padding:0 16px}}
 @media print{.app-header .actions,.tabs,.recommend button,.reasons .ref{display:none}.sheet-page[hidden]{display:block}}

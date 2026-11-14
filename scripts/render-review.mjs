@@ -78,6 +78,17 @@ export function validateReview(value) {
     }
     if (value.recommendation && !candidates.has(value.recommendation.candidate))
         throw new Error(`Recommendation names an unknown candidate: ${value.recommendation.candidate}`);
+    // The verdict must agree with the evidence on the sheets below it.
+    const { verdict } = value;
+    for (const reason of verdict.reasons)
+        for (const id of reason.candidates ?? [])
+            if (!candidates.has(id))
+                throw new Error(`Verdict reason names an unknown candidate: ${id}`);
+    const observedStrong = value.candidates.some(c => c.strength === 'strong' && c.findings.some(f => f.confidence === 'observed'));
+    if (verdict.grade === 'healthy' && observedStrong)
+        throw new Error('A healthy verdict contradicts a strong candidate with observed findings');
+    if (verdict.grade === 'at-risk' && !verdict.reasons.some(r => r.candidates?.length))
+        throw new Error('An at-risk verdict needs a reason that cites a candidate');
 }
 // Compare each quote with the cited lines: the reviewed commit first, then the working tree, so
 // uncommitted code under review can be quoted too.
@@ -207,46 +218,117 @@ function diagramSvg(c, side, uid, t) {
     }).join('');
     let marks = '';
     if (side === 'before') {
-        // Red pencil: one mark per finding, numbered to match the notes beside the drawing.
-        const placed = [...boxes.values()];
-        const hits = (r) => placed.some(p => r.x < p.x + p.w && r.x + r.w > p.x && r.y < p.y + p.h && r.y + r.h > p.y);
+        const placed = [...boxes.values()].map(b => ({ x: b.x - 12, y: b.y - 12, w: b.w + 24, h: b.h + 24 }));
+        // Wires are drawn as vertical and horizontal runs; each run is a thin obstacle.
+        const runs = (d) => {
+            const out = [];
+            let x = 0, y = 0;
+            for (const [, op, v] of d.matchAll(/([MVH])\s*([\d.\-]+(?:\s+[\d.\-]+)?)/g)) {
+                const [p, q] = v.split(/\s+/).map(Number);
+                if (op === 'M') {
+                    x = p;
+                    y = q;
+                    continue;
+                }
+                const nx = op === 'H' ? p : x, ny = op === 'V' ? p : y;
+                out.push({ x: Math.min(x, nx) - 4, y: Math.min(y, ny) - 4, w: Math.abs(nx - x) + 8, h: Math.abs(ny - y) + 8 });
+                x = nx;
+                y = ny;
+            }
+            return out;
+        };
+        // Notes may cross thin wires (they carry a paper-colored halo) but not nodes, marks or other notes.
+        const routes = d.edges.map(e => route(boxes.get(e.from), boxes.get(e.to)));
+        const wires = routes.flatMap(r => runs(r.d));
+        // Edge labels are text too; a note must not sit on one.
+        const labels = d.edges.flatMap((e, k) => e.label ? [{ x: routes[k].lx - 4, y: routes[k].ly - 16, w: textWidth(e.label) + 8, h: 22 }] : []);
+        const touches = (r, p) => r.x < p.x + p.w && r.x + r.w > p.x && r.y < p.y + p.h && r.y + r.h > p.y;
+        const hits = (r) => placed.some(p => touches(r, p)) || labels.some(p => touches(r, p));
+        const notes = [];
         const note = (text, x, y) => {
-            const w = [...text].length * 19 + 8, r = { x: Math.max(6, Math.min(x, width - w - 6)), y: y - 20, w, h: 26 };
-            while (hits(r))
-                r.y += 26;
+            const w = [...text].length * 19 + 8, h = 26;
+            const at = (dx, dy) => ({ x: Math.max(6, Math.min(x + dx, width - w - 6)), y: Math.max(4, y - 20 + dy), w, h });
+            // Among free spots, prefer the one crossing the fewest wires, then the one nearest the mark.
+            let r, best = Infinity;
+            for (const dy of [0, 14, -14, 28, -28, 42, -42, 56, -56, 84, 112])
+                for (const dx of [0, -40, 40, -80, 80, -140, 140, -220, 220]) {
+                    const c = at(dx, dy);
+                    if (hits(c))
+                        continue;
+                    const cost = wires.filter(p => touches(c, p)).length * 120 + Math.abs(dx) * .6 + Math.abs(dy);
+                    if (cost < best) {
+                        best = cost;
+                        r = c;
+                    }
+                }
+            if (!r) {
+                r = at(0, 0);
+                while (hits(r))
+                    r.y += h;
+            }
             placed.push(r);
             height = Math.max(height, r.y + r.h + 14);
-            return `<text class="hand" x="${r.x}" y="${r.y + 20}">${escape(text)}</text>`;
+            notes.push(`<text class="hand" x="${r.x}" y="${r.y + 20}">${escape(text)}</text>`);
         };
-        c.findings.forEach((f, i) => {
-            const ts = f.targets.map(target => boxes.get(target)), u = union(ts), label = `${CIRCLED[i]} ${f.note}`;
+        const findings = c.findings.map((f, i) => ({ f, i, ts: f.targets.map(target => boxes.get(target)) }));
+        // Draw every mark first so that all notes can avoid all of them.
+        const pending = [];
+        for (const { f, i, ts } of findings) {
+            const u = union(ts), label = `${CIRCLED[i]} ${f.note}`;
             if (f.kind === 'duplicate') {
                 marks += ts.map(b => `<path class="red" d="${loop(b, 10)}"/>`).join('');
                 for (let k = 1; k < ts.length; k++) {
                     const a = ts[k - 1], b = ts[k];
-                    marks += `<path class="red" d="M${a.cx} ${a.y + a.h + 10} C ${a.cx} ${a.y + a.h + 44}, ${b.cx} ${b.y + b.h + 44}, ${b.cx} ${b.y + b.h + 10}"/>`;
+                    if (Math.abs(a.cy - b.cy) < 2) {
+                        // Side by side: a sagging connector below both loops.
+                        marks += `<path class="red" d="M${a.cx} ${a.y + a.h + 10} C ${a.cx} ${a.y + a.h + 44}, ${b.cx} ${b.y + b.h + 44}, ${b.cx} ${b.y + b.h + 10}"/>`;
+                        placed.push({ x: Math.min(a.cx, b.cx), y: Math.min(a.y + a.h, b.y + b.h) + 8, w: Math.abs(a.cx - b.cx), h: 30 });
+                    }
+                    else {
+                        // Stacked or diagonal: a bracket on the outer side, so it never runs through the loops.
+                        const [hi, lo] = a.cy < b.cy ? [a, b] : [b, a], gx = Math.min(Math.max(hi.x + hi.w, lo.x + lo.w) + 22, width - 6);
+                        marks += `<path class="red" d="M${hi.x + hi.w + 12} ${hi.cy} C ${gx} ${hi.cy}, ${gx} ${hi.cy}, ${gx} ${hi.cy + 14} V${lo.cy - 14} C ${gx} ${lo.cy}, ${gx} ${lo.cy}, ${lo.x + lo.w + 12} ${lo.cy}"/>`;
+                        placed.push({ x: Math.min(hi.x + hi.w, lo.x + lo.w), y: hi.cy - 4, w: gx - Math.min(hi.x + hi.w, lo.x + lo.w) + 6, h: lo.cy - hi.cy + 8 });
+                    }
                 }
-                marks += note(label, (u.x + u.w / 2) - 80, u.y + u.h + 52);
+                pending.push(() => note(label, (u.x + u.w / 2) - 80, u.y + u.h + 62));
             }
             else if (f.kind === 'leak') {
                 marks += `<path class="red" d="${loop(u, 12)}"/><path class="red" d="M${u.x + u.w + 8} ${u.y + u.h + 8} l 34 30" marker-end="url(#${uid}-rh)"/>`;
-                marks += note(label, u.x + u.w + 30, u.y + u.h + 58);
+                placed.push({ x: u.x + u.w + 4, y: u.y + u.h + 4, w: 42, h: 38 });
+                pending.push(() => note(label, u.x + u.w + 30, u.y + u.h + 58));
             }
             else if (f.kind === 'shallow') {
                 marks += ts.map(b => `<path class="red" d="M${b.x - 6} ${b.y + b.h + 4} L${b.x + b.w + 6} ${b.y - 4}"/>`).join('');
-                marks += note(label, u.x + u.w + 16, u.y + 22);
+                pending.push(() => note(label, u.x + u.w + 16, u.y + 22));
             }
             else if (f.kind === 'ordering') {
                 marks += ts.map(b => { let p = `M${b.x} ${b.y + b.h + 8}`; for (let x = b.x; x < b.x + b.w; x += 16)
                     p += ` q 4 -6 8 0 q 4 6 8 0`; return `<path class="red" d="${p}"/>`; }).join('');
-                marks += note(label, u.x, u.y + u.h + 40);
+                pending.push(() => note(label, u.x, u.y + u.h + 40));
             }
             else {
-                const a = ts[0], b = ts[1] ?? ts[0];
-                marks += `<path class="red dashed" d="M${a.cx} ${a.cy} L${b.cx} ${b.cy}"/>`;
-                marks += note(label, (a.cx + b.cx) / 2 + 8, (a.cy + b.cy) / 2);
+                // Missing seam: a dashed line through a gutter beside the nodes, never across them.
+                // Try both gutters and keep the route that crosses the fewest other nodes.
+                const a = ts[0], b = ts[1] ?? ts[0], top = Math.min(a.y, b.y), bottom = Math.max(a.y + a.h, b.y + b.h);
+                const others = [...boxes.values()].filter(x => x !== a && x !== b);
+                const between = [...boxes.values()].filter(x => x.y < bottom && x.y + x.h > top);
+                const overlap = (s, o) => s.x + 4 < o.x + o.w && s.x + s.w - 4 > o.x && s.y + 4 < o.y + o.h && s.y + s.h - 4 > o.y;
+                const crossings = (path) => runs(path).reduce((n, s) => n + others.filter(o => overlap(s, o)).length * 10 + wires.filter(w => overlap(s, w)).length, 0);
+                const options = [true, false].map(right => {
+                    const gx = right ? Math.min(Math.max(...between.map(x => x.x + x.w)) + 14, width - 6) : Math.max(Math.min(...between.map(x => x.x)) - 14, 6);
+                    const path = `M${right ? a.x + a.w : a.x} ${a.cy} H${gx} V${b.cy} H${right ? b.x + b.w : b.x}`;
+                    return { right, gx, path, cost: crossings(path) * 1000 + Math.abs(gx - a.cx) + Math.abs(gx - b.cx) };
+                }).sort((p, q) => p.cost - q.cost);
+                const best = options[0];
+                marks += `<path class="red dashed" d="${best.path}"/>`;
+                placed.push(...runs(best.path));
+                const lw = [...label].length * 19 + 8;
+                pending.push(() => note(label, best.right ? best.gx - lw - 10 : best.gx + 10, (a.cy + b.cy) / 2 + 8));
             }
-        });
+        }
+        pending.forEach(place => place());
+        marks += notes.join('');
     }
     // Keep the bottom-right corner free for the title block (current) or the seal (proposal).
     height += side === 'before' ? 80 : 56;
@@ -276,8 +358,9 @@ export function renderReview(value, { quotes, views } = {}) {
         const evidence = c.evidence.map((e, k) => {
             const q = quotes?.[i]?.[k];
             const status = q?.state === 'verified' ? `<span class="verified">${icon('check')}${t('已与源码核对', 'Matches source')}</span>` : `<span class="unchecked">${t('未核对', 'Not checked')}</span>`;
-            const numbered = e.quote.replace(/\r\n?/g, '\n').split('\n').map((line, n) => `<span class="ln">${e.lines.start + n}</span>${escape(line)}`).join('\n');
-            return `<article class="slip"><div class="slip-head"><code>${escape(e.path)} · ${e.lines.start}–${e.lines.end}</code>${e.symbol ? `<span>${escape(e.symbol)}</span>` : ''}${status}</div><pre>${numbered}</pre><p class="hand-note">${escape(e.note)}</p></article>`;
+            // One block per source line: wrapped text hangs under its own code indent, not under the line number.
+            const numbered = e.quote.replace(/\r\n?/g, '\n').split('\n').map((line, n) => `<span class="cl" style="--i:${line.match(/^[ \t]*/)[0].replace(/\t/g, '  ').length}"><span class="ln">${e.lines.start + n}</span><span class="code">${escape(line) || ' '}</span></span>`).join('');
+            return `<details class="slip"><summary class="slip-head"><code>${escape(e.path)} · ${e.lines.start}–${e.lines.end}</code>${e.symbol ? `<span>${escape(e.symbol)}</span>` : ''}<span class="hand-note">${escape(e.note)}</span>${status}</summary><pre>${numbered}</pre></details>`;
         }).join('');
         const findings = c.findings.map((f, k) => `<li><span class="hand-num">${CIRCLED[k]}</span><div><b>${escape(f.note)}</b><span class="conf" data-confidence="${f.confidence}">${confidence[f.confidence]}</span><p>${escape(f.detail)}</p></div></li>`).join('');
         return `<section class="sheet-page" data-sheet="${i}"${i ? ' hidden' : ''}>
@@ -295,23 +378,27 @@ export function renderReview(value, { quotes, views } = {}) {
   <div><p class="cap"><b>${t('誊清稿', 'Clean redraw')}</b>${t('候选职责 · 未实施', 'Proposed responsibilities · not implemented')}</p>
     <div class="sheet">${diagramSvg(c, 'after', `${uid}a`, t)}<span class="seal">${t('建议稿', 'Proposal')}</span></div>
     <p class="caption">${escape(c.after.caption)}</p></div>
-  <div class="evidence">${evidence}</div>
+  <div class="evidence"><p class="cap"><b>${t('源码依据', 'Source evidence')}</b>${t(`${c.evidence.length} 处 · 点开看原文`, `${c.evidence.length} quotes · open to read`)}</p>${evidence}</div>
 </div>
-<div class="prose">
-  <div><h4>${t('方案', 'Solution')}</h4><p>${escape(c.solution)}</p></div>
-  <div><h4>${t('删除测试', 'Deletion test')} · ${verdict[c.deletionTest.verdict]}</h4><p class="hand-note">${escape(c.deletionTest.text)}</p></div>
-  <div><h4>${t('不改变', 'Unchanged')}</h4>${c.boundaries.length ? list(c.boundaries, 'plain') : `<p>${t('未列出', 'None listed')}</p>`}</div>
-</div>
-<div class="prose">
-  <div><h4>${t('收益', 'Wins')}</h4><ul class="wins">${c.wins.map(w => `<li><b>${win[w.kind]}</b>${escape(w.text)}</li>`).join('')}</ul></div>
-  <div><h4>${t('迁移代价', 'Migration cost')}</h4><p>${escape(c.cost)}</p></div>
-  <div>${c.adrConflict ? `<h4>${t('与既有决策冲突', 'Conflicts with a recorded decision')}</h4><p><code>${escape(c.adrConflict.path)}</code> ${escape(c.adrConflict.reason)}</p>` : ''}</div>
+<div class="argument">
+  <div class="solution"><h4>${t('方案', 'Solution')}</h4><p>${escape(c.solution)}</p></div>
+  <div class="cards">
+    <div class="card gain"><h4>${t('收益', 'Wins')}</h4><ul class="wins">${c.wins.map(w => `<li><b>${win[w.kind]}</b>${escape(w.text)}</li>`).join('')}</ul></div>
+    <div class="card cost"><h4>${t('迁移代价', 'Migration cost')}</h4><p>${escape(c.cost)}</p></div>
+    <div class="card"><h4>${t('不改变', 'Unchanged')}</h4>${c.boundaries.length ? list(c.boundaries, 'plain') : `<p>${t('未列出', 'None listed')}</p>`}</div>
+    <div class="card"><h4>${t('删除测试', 'Deletion test')}<span class="tag">${verdict[c.deletionTest.verdict]}</span></h4><p>${escape(c.deletionTest.text)}</p></div>
+    ${c.adrConflict ? `<div class="card conflict"><h4>${t('与既有决策冲突', 'Conflicts with a recorded decision')}</h4><p><code>${escape(c.adrConflict.path)}</code> ${escape(c.adrConflict.reason)}</p></div>` : ''}
+  </div>
 </div>
 <div class="verify"><h4>${t('通过 Interface 验证', 'Verify through the interface')}</h4>${list(c.verification, 'checks')}</div>
 </section>`;
     }).join('');
     const rec = r.recommendation ? r.candidates.findIndex(c => c.id === r.recommendation.candidate) : -1;
     const recommendation = rec >= 0 ? `<div class="recommend"><span class="hand">${t('建议先做', 'Start with')}</span><b>${num(rec)} · ${escape(r.candidates[rec].title)}</b><span>${escape(r.recommendation.reason)}</span><button type="button" data-goto="${rec}">${t('查看', 'Open')}</button></div>` : '';
+    const grades = { healthy: t('健康', 'Healthy'), 'needs-work': t('需要改进', 'Needs work'), 'at-risk': t('有风险', 'At risk') };
+    const index = new Map(r.candidates.map((c, i) => [c.id, i]));
+    const refs = (ids = []) => ids.filter(id => index.has(id)).map(id => `<button type="button" class="ref" data-goto="${index.get(id)}">${num(index.get(id))}</button>`).join('');
+    const verdictBlock = `<section class="verdict" data-grade="${r.verdict.grade}" aria-label="${t('总评', 'Verdict')}"><div class="grade"><span class="label">${t('总评', 'Verdict')}</span><b>${grades[r.verdict.grade]}</b></div><div class="body"><h1>${escape(r.verdict.headline)}</h1><ol class="reasons">${r.verdict.reasons.map(reason => `<li><span>${escape(reason.text)}</span>${refs(reason.candidates)}</li>`).join('')}</ol>${recommendation}</div></section>`;
     const tabs = r.candidates.length > 1 ? `<nav class="tabs" aria-label="${t('评审候选', 'Review candidates')}">${r.candidates.map((c, i) => `<button type="button" data-goto="${i}" aria-pressed="${i === 0}"><span>${num(i)}</span>${escape(c.title)}</button>`).join('')}</nav>` : '';
     const empty = `<div class="empty"><h1>${t('未发现有充分依据的改进候选', 'No sufficiently supported improvement candidates')}</h1><p>${t('已检查的范围列在下方；证据不足的设想不会作为候选列出。', 'The checked scope is listed below; ideas without sufficient evidence are not listed as candidates.')}</p></div>`;
     const version = JSON.parse(read('package.json')).version;
@@ -329,7 +416,7 @@ ${r.workingTree.dirty.length ? `<h4>${t('工作区未提交改动', 'Uncommitted
         ? `<nav class="views" aria-label="${t('项目视图', 'Project views')}"><a href="${escape(views.architectureHref)}">${t('架构', 'Architecture')}</a>${views.constraints ? `<a href="${escape(views.architectureHref)}#view=constraints">${t('约束', 'Constraints')}</a>` : ''}<a aria-current="page">${t('评审', 'Review')}</a></nav>`
         : `<span class="chip">${t('架构评审', 'Architecture review')}</span>`;
     const header = `<header class="app-header"><img src="${dataUrl('assets/brand/logo-192.png', 'image/png')}" alt="" width="34" height="34"><span class="project">${escape(r.project)}</span>${nav}<div class="actions"><button type="button" class="theme-toggle" aria-label="${t('切换明暗主题', 'Toggle light or dark theme')}"><span class="sun">${icon('sun')}</span><span class="moon">${icon('moon')}</span></button></div></header>`;
-    const intro = `<div class="intro"><p class="strip">${t('架构评审', 'Architecture review')} · ${escape(r.revision)}<span>${t(`${r.candidates.length} 个候选`, `${r.candidates.length} candidates`)}</span></p>${r.baseline ? `<p class="baseline"><b>${t('本轮基线', 'Baseline')}</b>${escape(r.baseline)}</p>` : ''}${recommendation}${tabs}</div>`;
+    const intro = `<div class="intro"><p class="strip">${t('架构评审', 'Architecture review')} · ${escape(r.revision)}<span>${t(`${r.candidates.length} 个候选`, `${r.candidates.length} candidates`)}</span></p>${verdictBlock}${r.baseline ? `<p class="baseline"><b>${t('本轮基线', 'Baseline')}</b>${escape(r.baseline)}</p>` : ''}${tabs}</div>`;
     return `<!doctype html><html lang="${r.language}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escape(r.project)} · ${t('架构评审', 'Architecture review')} · Birdview</title><link rel="icon" href="${dataUrl('assets/brand/favicon-32.png', 'image/png')}"><script>${read('assets/theme.js')}</script><style>${read('assets/review.css')}</style></head><body>${header}<main class="page">${intro}${sheets || empty}${footer}</main><script>${read('assets/review.js')}</script></body></html>`;
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {

@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "2",
+  "schemaVersion": "3",
   "project": "birdview",
   "revision": "2026-10-08-arch-review-1",
   "sourceRevision": "71287e5205f0e33ac8564d37293657e6a11c275e",
@@ -915,5 +915,26 @@
   "recommendation": {
     "candidate": "page-delivery",
     "reason": "评审功能刚加入，现在把评审输出并入 deliver 的成本最低，并能直接获得已有的别名与原子写出保证。"
+  },
+  "verdict": {
+    "grade": "needs-work",
+    "headline": "主链路清楚可用，交付和规则校验各有一处重复实现",
+    "reasons": [
+      {
+        "text": "项目页交付分成两条入口，只有 deliver 有别名防护与原子写出，走 render 时容易漏掉保护。",
+        "candidates": [
+          "page-delivery"
+        ]
+      },
+      {
+        "text": "规则合法性校验散落在三处且条件不一致，改规则字段时需要同步多处。",
+        "candidates": [
+          "rule-gate"
+        ]
+      },
+      {
+        "text": "两处问题都在进程内，可通过现有 CLI 回归测试验证，迁移成本较低。"
+      }
+    ]
   }
 }

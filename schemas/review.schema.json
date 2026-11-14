@@ -5,7 +5,7 @@
   "type": "object",
   "properties": {
     "schemaVersion": {
-      "const": "2",
+      "const": "3",
       "type": "string"
     },
     "project": {
@@ -878,6 +878,68 @@
           ]
         }
       ]
+    },
+    "verdict": {
+      "additionalProperties": false,
+      "type": "object",
+      "properties": {
+        "grade": {
+          "anyOf": [
+            {
+              "const": "healthy",
+              "type": "string"
+            },
+            {
+              "const": "needs-work",
+              "type": "string"
+            },
+            {
+              "const": "at-risk",
+              "type": "string"
+            }
+          ]
+        },
+        "headline": {
+          "minLength": 1,
+          "maxLength": 40,
+          "pattern": "\\S",
+          "type": "string"
+        },
+        "reasons": {
+          "minItems": 1,
+          "maxItems": 3,
+          "type": "array",
+          "items": {
+            "additionalProperties": false,
+            "type": "object",
+            "properties": {
+              "text": {
+                "minLength": 1,
+                "maxLength": 120,
+                "pattern": "\\S",
+                "type": "string"
+              },
+              "candidates": {
+                "minItems": 1,
+                "maxItems": 6,
+                "type": "array",
+                "items": {
+                  "pattern": "^[a-z][a-z0-9-]{0,63}$",
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "text"
+            ]
+          }
+        }
+      },
+      "required": [
+        "grade",
+        "headline",
+        "reasons"
+      ]
     }
   },
   "required": [
@@ -891,7 +953,8 @@
     "gaps",
     "language",
     "candidates",
-    "recommendation"
+    "recommendation",
+    "verdict"
   ],
   "$defs": {}
 }

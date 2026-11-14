@@ -17,6 +17,18 @@ try {
     await page.setContent(renderReview(r, { quotes }));
     assert.equal(await page.locator('.sheet-page:visible').count(), 1);
     const sheet = page.locator('.sheet-page:visible');
+    assert.equal(await page.locator('.verdict h1').textContent(), r.verdict.headline);
+    const reasonLink = page.locator('.verdict .ref').last();
+    const targetSheet = await reasonLink.getAttribute('data-goto');
+    await reasonLink.click();
+    assert.equal(await page.locator(`.sheet-page[data-sheet="${targetSheet}"]`).isVisible(), true);
+    await page.locator('.tabs [data-goto="0"]').click();
+    const evidence = sheet.locator('details.slip').first();
+    assert.equal(await evidence.getAttribute('open'), null);
+    await evidence.locator('summary').click();
+    assert.equal(await evidence.locator('pre').isVisible(), true);
+    await evidence.locator('summary').click();
+    assert.equal(await evidence.locator('pre').isVisible(), false);
     // Red pencil: one numbered note per finding and margin notes for caller knowledge.
     assert.ok(await sheet.locator('svg .red').count() >= r.candidates[0]!.findings.length);
     assert.equal(await sheet.locator('.findings li').count(), r.candidates[0]!.findings.length);

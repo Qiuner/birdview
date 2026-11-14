@@ -5,7 +5,7 @@ import { execFileSync } from 'node:child_process';
 import { isMainModule } from './main-module.mjs';
 import type { ConstraintCatalog, ConstraintSource, SourceSection } from './constraint-types.mjs';
 
-export function discoverConstraints(repository: string, { title, maxSources = 1000 }: { title?: string; maxSources?: number } = {}): ConstraintCatalog {
+export function discoverConstraints(repository: string, { title, maxSources = 1000, entries: requestedEntries = [] }: { title?: string; maxSources?: number; entries?: string[] } = {}): ConstraintCatalog {
   if (!Number.isInteger(maxSources) || maxSources < 1) throw new Error('maxSources must be a positive integer');
   const git = (...args: string[]): string => execFileSync('git', ['--no-optional-locks', '-C', repository, ...args], {
     encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, windowsHide: true,
@@ -23,6 +23,14 @@ export function discoverConstraints(repository: string, { title, maxSources = 10
   const tracked = new Set(files);
   const entries = files.filter(file => /(^|\/)(AGENTS|CLAUDE|GEMINI|SKILL)\.md$/.test(file)
     || /^(CONTRIBUTING\.md|\.github\/copilot-instructions\.md|\.cursor\/rules\/.*\.mdc)$/.test(file));
+  const unresolved: ConstraintCatalog['coverage']['unresolved'] = [];
+  // Projects that keep their rules elsewhere (CONTEXT.md, docs/decisions.md) name those files explicitly.
+  for (const requested of requestedEntries) {
+    const file = path.posix.normalize(requested.replace(/\\/g, '/').replace(/^\.\//, ''));
+    if (!/\.(md|mdc)$/.test(file)) unresolved.push({ from: '(requested entry)', target: requested, reason: 'requested-entry-not-markdown' });
+    else if (file.startsWith('../') || file.startsWith('/') || !tracked.has(file)) unresolved.push({ from: '(requested entry)', target: requested, reason: 'requested-entry-missing' });
+    else if (!entries.includes(file)) entries.push(file);
+  }
   const excluded = new Map<string, { path: string; reason: string; target?: string }>();
   const exclusion = (file: string): string | null => {
     if (/(^|\/)(fixtures?|__fixtures__|node_modules)(\/|$)/i.test(file) || /(^|\/)snapshots\/.*\/workspace\//.test(file)) return 'fixture-or-dependency';
@@ -33,7 +41,6 @@ export function discoverConstraints(repository: string, { title, maxSources = 10
   const queue: Array<{ file: string; from: string | null }> = [];
   const seen = new Set<string>();
   const references: ConstraintCatalog['references'] = [];
-  const unresolved: ConstraintCatalog['coverage']['unresolved'] = [];
   const enqueue = (file: string, from: string | null = null): void => {
     const reason = exclusion(file);
     if (reason) { excluded.set(file, { path: file, reason }); return; }
@@ -130,9 +137,16 @@ export function discoverConstraints(repository: string, { title, maxSources = 10
 }
 
 if (isMainModule(import.meta.url)) {
-  const [repository, output, title] = process.argv.slice(2);
-  if (!repository || !output) throw new Error('Usage: node scripts/discover-constraints.mjs repository catalog.json [project-name]');
-  const catalog = discoverConstraints(repository, title ? { title } : {});
+  const args = process.argv.slice(2);
+  const entries: string[] = [];
+  const positional: string[] = [];
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '--entry') { const value = args[++i]; if (!value) throw new Error('--entry needs a repository-relative path'); entries.push(value); }
+    else positional.push(args[i]!);
+  }
+  const [repository, output, title] = positional;
+  if (!repository || !output) throw new Error('Usage: node scripts/discover-constraints.mjs repository catalog.json [project-name] [--entry CONTEXT.md ...]');
+  const catalog = discoverConstraints(repository, { ...(title ? { title } : {}), entries });
   fs.mkdirSync(path.dirname(path.resolve(output)), { recursive: true });
   fs.writeFileSync(output, JSON.stringify(catalog, null, 2) + '\n');
   console.log(JSON.stringify({ sources: catalog.sources.length, sections: catalog.sources.reduce((n, source) => n + source.sections.length, 0),

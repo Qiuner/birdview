@@ -3,7 +3,7 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { isMainModule } from './main-module.mjs';
-export function discoverConstraints(repository, { title, maxSources = 1000 } = {}) {
+export function discoverConstraints(repository, { title, maxSources = 1000, entries: requestedEntries = [] } = {}) {
     if (!Number.isInteger(maxSources) || maxSources < 1)
         throw new Error('maxSources must be a positive integer');
     const git = (...args) => execFileSync('git', ['--no-optional-locks', '-C', repository, ...args], {
@@ -22,6 +22,17 @@ export function discoverConstraints(repository, { title, maxSources = 1000 } = {
     const tracked = new Set(files);
     const entries = files.filter(file => /(^|\/)(AGENTS|CLAUDE|GEMINI|SKILL)\.md$/.test(file)
         || /^(CONTRIBUTING\.md|\.github\/copilot-instructions\.md|\.cursor\/rules\/.*\.mdc)$/.test(file));
+    const unresolved = [];
+    // Projects that keep their rules elsewhere (CONTEXT.md, docs/decisions.md) name those files explicitly.
+    for (const requested of requestedEntries) {
+        const file = path.posix.normalize(requested.replace(/\\/g, '/').replace(/^\.\//, ''));
+        if (!/\.(md|mdc)$/.test(file))
+            unresolved.push({ from: '(requested entry)', target: requested, reason: 'requested-entry-not-markdown' });
+        else if (file.startsWith('../') || file.startsWith('/') || !tracked.has(file))
+            unresolved.push({ from: '(requested entry)', target: requested, reason: 'requested-entry-missing' });
+        else if (!entries.includes(file))
+            entries.push(file);
+    }
     const excluded = new Map();
     const exclusion = (file) => {
         if (/(^|\/)(fixtures?|__fixtures__|node_modules)(\/|$)/i.test(file) || /(^|\/)snapshots\/.*\/workspace\//.test(file))
@@ -35,7 +46,6 @@ export function discoverConstraints(repository, { title, maxSources = 1000 } = {
     const queue = [];
     const seen = new Set();
     const references = [];
-    const unresolved = [];
     const enqueue = (file, from = null) => {
         const reason = exclusion(file);
         if (reason) {
@@ -161,10 +171,23 @@ export function discoverConstraints(repository, { title, maxSources = 1000 } = {
                 'History counts use current file paths; rename ancestry is not followed.'] }, references, sources };
 }
 if (isMainModule(import.meta.url)) {
-    const [repository, output, title] = process.argv.slice(2);
+    const args = process.argv.slice(2);
+    const entries = [];
+    const positional = [];
+    for (let i = 0; i < args.length; i++) {
+        if (args[i] === '--entry') {
+            const value = args[++i];
+            if (!value)
+                throw new Error('--entry needs a repository-relative path');
+            entries.push(value);
+        }
+        else
+            positional.push(args[i]);
+    }
+    const [repository, output, title] = positional;
     if (!repository || !output)
-        throw new Error('Usage: node scripts/discover-constraints.mjs repository catalog.json [project-name]');
-    const catalog = discoverConstraints(repository, title ? { title } : {});
+        throw new Error('Usage: node scripts/discover-constraints.mjs repository catalog.json [project-name] [--entry CONTEXT.md ...]');
+    const catalog = discoverConstraints(repository, { ...(title ? { title } : {}), entries });
     fs.mkdirSync(path.dirname(path.resolve(output)), { recursive: true });
     fs.writeFileSync(output, JSON.stringify(catalog, null, 2) + '\n');
     console.log(JSON.stringify({ sources: catalog.sources.length, sections: catalog.sources.reduce((n, source) => n + source.sections.length, 0),

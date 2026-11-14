@@ -31,7 +31,7 @@ export function renderArchitecture(map, events = [], { simulation = false, repos
             if (rule.modules !== undefined && (!binding || rule.modules.some(id => !architecture.modules.some(module => module.id === id))))
                 throw new Error(`Invalid module binding: ${rule.id}`);
         }
-        constraintView = { graph: buildConstraintGraph(constraintCatalog), snapshot: constraintCatalog.project.revision,
+        constraintView = { graph: buildConstraintGraph(constraintCatalog, architecture.language), snapshot: constraintCatalog.project.revision,
             scope: constraintCatalog.ruleReview.scope, rules: constraintCatalog.rules.map(({ id, modules = [] }) => ({ id, modules })) };
     }
     const data = JSON.stringify({ map: architecture, icons, events, simulation, brandLogo, constraintFreshness, constraintView, ...(reviewHref ? { reviewHref } : {}) }).replace(/</g, '\\u003c');

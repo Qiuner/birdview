@@ -8,7 +8,7 @@ import { pathToFileURL, fileURLToPath } from 'node:url';
 import { discoverConstraints } from '../src/discover-constraints.mjs';
 import { renderConstraintCatalog } from '../src/render-constraints.mjs';
 import { compileConstraintRules } from '../src/compile-constraint-rules.mjs';
-import { constraintRoles } from '../src/constraint-rule-view.mjs';
+import { constraintRoles, buildRuleGraph } from '../src/constraint-rule-view.mjs';
 import { collectRuleHistory } from '../src/constraint-rule-history.mjs';
 import { renderArchitecture } from '../src/render.mjs';
 import type { ConstraintGraph, ConstraintRule } from '../src/constraint-types.mjs';
@@ -130,4 +130,46 @@ test('discovers reference closure, records exclusions, ignores fenced examples a
     const shallowHistory = collectRuleHistory(reviewed, clone).rules[0]!.history;
     assert.equal(shallowHistory?.status === 'untracked' ? shallowHistory.reason : undefined, 'shallow-history');
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('collects explicitly requested entry files such as CONTEXT.md', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'birdview-entries-'));
+  try {
+    fs.mkdirSync(path.join(root, 'docs'));
+    fs.writeFileSync(path.join(root, 'CONTEXT.md'), '# Domain rules\n\nSee [the bible](docs/bible.md).\n');
+    fs.writeFileSync(path.join(root, 'docs/bible.md'), '# Bible\n\n## Art\nOnly original art.\n');
+    const git = (...args: string[]) => execFileSync('git', ['-C', root, ...args], { encoding: 'utf8' });
+    git('init', '-q'); git('add', '.');
+    git('-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', '-c', 'commit.gpgsign=false', 'commit', '-qm', 'fixture');
+    assert.equal(discoverConstraints(root).sources.length, 0);
+    const catalog = discoverConstraints(root, { entries: ['CONTEXT.md', 'missing.md', 'docs'] });
+    assert.deepEqual(catalog.sources.map(source => source.path).sort(), ['CONTEXT.md', 'docs/bible.md']);
+    assert.equal(catalog.sources.find(source => source.path === 'CONTEXT.md')?.kind, 'instruction');
+    assert.deepEqual(catalog.coverage.entries, ['CONTEXT.md']);
+    assert.deepEqual(catalog.coverage.unresolved.map(item => [item.target, item.reason]).sort(),
+      [['docs', 'requested-entry-not-markdown'], ['missing.md', 'requested-entry-missing']]);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('rule view text follows the map language and keeps Chinese for zh maps', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'birdview-rule-language-'));
+  try {
+    fs.writeFileSync(path.join(root, 'AGENTS.md'), '# Rules\n\n## Checks\nAlways run the tests.\n');
+    const git = (...args: string[]) => execFileSync('git', ['-C', root, ...args], { encoding: 'utf8' });
+    git('init', '-q'); git('add', '.');
+    git('-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', '-c', 'commit.gpgsign=false', 'commit', '-qm', 'fixture');
+    const catalog = discoverConstraints(root);
+    const reviewed = compileConstraintRules(catalog, { revision: catalog.project.revision, scope: 'Checks only', groups: [{ sourcePath: 'AGENTS.md', category: 'testing',
+      rules: [{ id: 'rule-tests', name: 'Run the tests', anchor: 'Always run the tests.', condition: 'After a change', explanation: 'Run the related tests.', verification: 'Check the exit code.' }] }] });
+    const cjk = /[\u4e00-\u9fff]/;
+    const text = (graph: ReturnType<typeof buildRuleGraph>) => JSON.stringify([graph.nodes, graph.directoryNodes, graph.documents, graph.scope]);
+    assert.ok(!cjk.test(text(buildRuleGraph(reviewed, 'pt-BR'))), 'pt-BR map must not get Chinese generated text');
+    assert.ok(!cjk.test(text(buildRuleGraph(reviewed, 'en'))));
+    assert.ok(cjk.test(text(buildRuleGraph(reviewed, 'zh-CN'))));
+    assert.ok(cjk.test(text(buildRuleGraph(reviewed))), 'legacy default stays Chinese');
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 });

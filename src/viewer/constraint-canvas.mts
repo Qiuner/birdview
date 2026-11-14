@@ -9,7 +9,9 @@ export interface ConstraintCanvas {
 type Point = { x: number; y: number };
 type Gesture = { x?: number; y?: number; camera?: { x: number; y: number; scale: number }; distance?: number; scale?: number };
 
-export function mountConstraintCanvas(container: HTMLElement, data: ConstraintGraph): ConstraintCanvas {
+export function mountConstraintCanvas(container: HTMLElement, graph: ConstraintGraph): ConstraintCanvas {
+  const translatedGraph = (): ConstraintGraph => ({ ...graph, ...graph.translations?.[document.documentElement.lang.startsWith('zh') ? 'zh' : 'en'] });
+  let data = translatedGraph();
   const root = container;
   root.classList.add('bv-constraints');
   const element = <K extends keyof HTMLElementTagNameMap>(tag: K, className = '', content?: string): HTMLElementTagNameMap[K] => {
@@ -23,7 +25,6 @@ export function mountConstraintCanvas(container: HTMLElement, data: ConstraintGr
     const node = element('button', className, label);
     node.type = 'button'; node.onclick = action; return node;
   };
-  const topicNodes = data.nodes;
   let directoryMode = false, filteredRules: string[] | null = null;
   const nodes = new Map<string, ConstraintGraphNode>(data.nodes.map(node => [node.id, node]));
   const children = new Map<string, string[]>(data.nodes.map(node => [node.id, []]));
@@ -109,7 +110,8 @@ export function mountConstraintCanvas(container: HTMLElement, data: ConstraintGr
   root.append(toolbar, workspace, legend);
   grouping.onchange = () => {
     directoryMode = grouping.value === 'directories';
-    data.nodes = directoryMode ? data.directoryNodes! : topicNodes;
+    data = translatedGraph();
+    if (directoryMode) data.nodes = data.directoryNodes!;
     nodes.clear(); children.clear();
     for (const node of data.nodes) { nodes.set(node.id, node); children.set(node.id, []); }
     for (const node of data.nodes) if (node.parent) children.get(node.parent)?.push(node.id);
@@ -307,7 +309,7 @@ export function mountConstraintCanvas(container: HTMLElement, data: ConstraintGr
     empty.textContent = searchMessage || text('没有匹配的规则', 'No matching rules');
     applyCamera();
   }
-  function searchNodes() {
+  function searchNodes(refit = true) {
     query = search.value.trim().toLocaleLowerCase(); matching = null; searchMessage = '';
     if (query) {
       matching = new Set(); let count = 0;
@@ -320,9 +322,9 @@ export function mountConstraintCanvas(container: HTMLElement, data: ConstraintGr
       }
       if (count > 100) searchMessage = text(`找到 ${count} 项，显示前 100 项；请缩小搜索范围。`, `${count} matches; showing the first 100. Refine your search.`);
     }
-    render(); fit();
+    render(); if (refit) fit();
   }
-  search.oninput = searchNodes;
+  search.oninput = () => searchNodes();
   let gesture: Gesture | null = null, moved = false;
   const pointers = new Map<number, Point>();
   viewport.onpointerdown = event => {
@@ -379,7 +381,24 @@ export function mountConstraintCanvas(container: HTMLElement, data: ConstraintGr
       selected = top; expanded.clear(); expanded.add(top); reader.hidden = true; search.value = ''; query = ''; matching = null; searchMessage = '';
       resetFilter.hidden = !filterIds; render(); fit(); refreshLabels();
     },
-    refresh() { const scroll = reader.scrollTop; refreshLabels(); render(); if (!reader.hidden) { showDetails(selected); reader.scrollTop = scroll; } },
+    refresh() {
+      data = translatedGraph();
+      if (directoryMode) data.nodes = data.directoryNodes!;
+      for (const node of data.nodes) nodes.set(node.id, node);
+      const scroll = reader.scrollTop;
+      const readerHidden = reader.hidden;
+      refreshLabels();
+      if (query) searchNodes(false); else render();
+      if (!readerHidden || dialog.open) {
+        showDetails(selected);
+        if (dialog.open) {
+          dialogTitle.textContent = readerTitle.textContent;
+          dialogContent.replaceChildren(readerMeta.cloneNode(true), readerBody.cloneNode(true));
+        }
+        reader.hidden = readerHidden;
+        reader.scrollTop = scroll;
+      }
+    },
     resize() { if (!fitted && viewport.clientWidth > 0) fit(); }
   };
   function refreshLabels() {

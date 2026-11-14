@@ -10,6 +10,12 @@ Use this route for a standalone constraint graph, a repository-wide inventory or
 node scripts/discover-constraints.mjs /path/to/repository /output/constraints.catalog.json "Project name"
 ```
 
+The collector starts from AGENTS, CLAUDE, GEMINI and SKILL files, CONTRIBUTING.md, `.github/copilot-instructions.md` and `.cursor/rules`. When a project keeps its rules elsewhere (for example `CONTEXT.md` or `docs/decisions.md`), name those tracked Markdown files with repeated `--entry` options; they are treated as instruction entries and their local references are followed. Missing or non-Markdown paths are reported in `coverage.unresolved` instead of failing:
+
+```sh
+node scripts/discover-constraints.mjs /path/to/repository /output/constraints.catalog.json "Project name" --entry CONTEXT.md --entry docs/decisions.md
+```
+
 Next read the collected sources and author the reviewed selection below. Integrated delivery uses `birdview.mjs deliver` after that review; do not generate source-only or standalone rule pages as intermediate steps. Inspect the collected catalog JSON before rule review.
 
 The collector reads committed HEAD without modifying the repository. It enumerates tracked AGENTS.md, CLAUDE.md, GEMINI.md, SKILL.md, root CONTRIBUTING.md, GitHub Copilot instructions and Cursor rules, then follows local Markdown links and quoted Markdown paths recursively. It preserves source text, heading hierarchy, line ranges and file history. It excludes recognized fixtures, archives and duplicate Chinese translations, retaining reasons. References indicate discovery, not authority or automatic activation. A skill is conditional on its task; a directory instruction applies only under the host's inheritance rules. Implemented decision notes remain reference evidence, not automatically current rules.
@@ -75,7 +81,7 @@ node scripts/birdview.mjs deliver architecture.json project.html --constraints v
 
 Activity JSONL and `--repo` remain optional. The command writes `project.html`, including source reading under By directory. If the selection has not been compiled yet, use `--catalog catalog.json --rules reviewed-rules.json --repo /path/to/repository` instead of `--constraints`; it also writes `project.constraints.json`. See [delivery.md](delivery.md) for strict authoring, bilingual/legacy checks, warnings and failure handling. The renderer API accepts `constraintCatalog` in its third argument; source reading is embedded in the returned HTML.
 
-Both views retain their canvas state when switching. The header keeps the project name, language controls and shared light/dark theme; role colors keep the same meaning. Architecture revision and constraint snapshot are distinct identities. Controls use the host language; authored rules and source quotations stay in their original language. Source evidence is read within the constraint view.
+Both views retain their canvas state when switching. The header keeps the project name, language controls and shared light/dark theme; role colors keep the same meaning. Architecture revision and constraint snapshot are distinct identities. Controls and generated category names, coverage text and detail headings follow the selected page language: Chinese for Chinese locales, English otherwise. Switching language updates both topic and directory views, including open details; authored rules and source quotations stay in their original language. Source evidence is read within the constraint view.
 
 Project names must match. Optional module links require an explicit catalog `architectureBinding: {mapId, mapRevision, sourceRevision}` matching the map and the full catalog commit, plus `modules: ["module-id"]` on reviewed rules. Carry this binding in the reviewed selection when compiling; recompilation discards old catalog bindings. Inspect source evidence before authoring links. The renderer rejects stale bindings and unknown module IDs. Role similarity is never a module link. Without bindings, the full graph still works and module details say no links are recorded. With bindings, the module button opens only linked rules and their ancestors; “Show all rules” restores the full graph. Changing this filter initializes a new constraint layout; switching architecture/constraints alone preserves it. Versions and verification evidence remain unchanged by filtering.
 

@@ -81,7 +81,7 @@ node scripts/birdview.mjs deliver architecture.json project.html --constraints v
 
 活动 JSONL 与 `--repo` 仍为可选参数。命令写出 `project.html`，其中“按目录”支持页内来源阅读。选择文件尚未编译时，用 `--catalog catalog.json --rules reviewed-rules.json --repo /path/to/repository` 替代 `--constraints`，另会输出 `project.constraints.json`。严格作者校验、双语/旧图检查、警告和失败处理见 [delivery.zh.md](delivery.zh.md)。渲染器 API 的第三个参数支持 `constraintCatalog`；返回的 HTML 内已包含来源阅读。
 
-切换视图时保留各自画布状态。页头保留项目名称、语言控件和共享明暗主题；角色颜色含义一致。架构版本与约束快照是不同标识。控件使用主页面语言；已撰写规则和来源引文保持原语言。来源依据在约束视图内阅读。
+切换视图时保留各自画布状态。页头保留项目名称、语言控件和共享明暗主题；角色颜色含义一致。架构版本与约束快照是不同标识。控件与自动生成的分类名、覆盖范围文字和详情标题跟随页面所选语言：中文语言使用中文，其他语言使用英文。切换语言会更新主题视图、目录视图及已打开的详情；已撰写规则和来源引文保持原语言。来源依据在约束视图内阅读。
 
 项目名称必须匹配。可选模块关联要求清单明确声明 `architectureBinding: {mapId, mapRevision, sourceRevision}`，与架构和清单的完整提交一致，并在已审查规则上声明 `modules: ["module-id"]`。编译时在审查选择中携带此绑定；重新编译会丢弃旧清单绑定。撰写关联前检查源码依据。渲染器拒绝过期绑定和未知模块 ID。角色相似绝不是模块关联。没有绑定时，完整图仍可用，模块详情提示尚未记录关联；有绑定时，模块按钮仅打开关联规则及其祖先，“查看全部规则”恢复完整图。改变筛选会初始化新的约束布局；仅切换架构/约束会保留布局。筛选不改变版本与核验证据。
 

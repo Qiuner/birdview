@@ -24,7 +24,9 @@ var BirdviewConstraintCanvas = (() => {
   __export(constraint_canvas_exports, {
     mountConstraintCanvas: () => mountConstraintCanvas
   });
-  function mountConstraintCanvas(container, data) {
+  function mountConstraintCanvas(container, graph) {
+    const translatedGraph = () => ({ ...graph, ...graph.translations?.[document.documentElement.lang.startsWith("zh") ? "zh" : "en"] });
+    let data = translatedGraph();
     const root = container;
     root.classList.add("bv-constraints");
     const element = (tag, className = "", content) => {
@@ -40,7 +42,6 @@ var BirdviewConstraintCanvas = (() => {
       node.onclick = action;
       return node;
     };
-    const topicNodes = data.nodes;
     let directoryMode = false, filteredRules = null;
     const nodes = new Map(data.nodes.map((node) => [node.id, node]));
     const children = new Map(data.nodes.map((node) => [node.id, []]));
@@ -149,7 +150,8 @@ var BirdviewConstraintCanvas = (() => {
     root.append(toolbar, workspace, legend);
     grouping.onchange = () => {
       directoryMode = grouping.value === "directories";
-      data.nodes = directoryMode ? data.directoryNodes : topicNodes;
+      data = translatedGraph();
+      if (directoryMode) data.nodes = data.directoryNodes;
       nodes.clear();
       children.clear();
       for (const node of data.nodes) {
@@ -420,7 +422,7 @@ var BirdviewConstraintCanvas = (() => {
       empty.textContent = searchMessage || text("\u6CA1\u6709\u5339\u914D\u7684\u89C4\u5219", "No matching rules");
       applyCamera();
     }
-    function searchNodes() {
+    function searchNodes(refit = true) {
       query = search.value.trim().toLocaleLowerCase();
       matching = null;
       searchMessage = "";
@@ -437,9 +439,9 @@ var BirdviewConstraintCanvas = (() => {
         if (count > 100) searchMessage = text(`\u627E\u5230 ${count} \u9879\uFF0C\u663E\u793A\u524D 100 \u9879\uFF1B\u8BF7\u7F29\u5C0F\u641C\u7D22\u8303\u56F4\u3002`, `${count} matches; showing the first 100. Refine your search.`);
       }
       render();
-      fit();
+      if (refit) fit();
     }
-    search.oninput = searchNodes;
+    search.oninput = () => searchNodes();
     let gesture = null, moved = false;
     const pointers = /* @__PURE__ */ new Map();
     viewport.onpointerdown = (event) => {
@@ -539,11 +541,21 @@ var BirdviewConstraintCanvas = (() => {
         refreshLabels();
       },
       refresh() {
+        data = translatedGraph();
+        if (directoryMode) data.nodes = data.directoryNodes;
+        for (const node of data.nodes) nodes.set(node.id, node);
         const scroll = reader.scrollTop;
+        const readerHidden = reader.hidden;
         refreshLabels();
-        render();
-        if (!reader.hidden) {
+        if (query) searchNodes(false);
+        else render();
+        if (!readerHidden || dialog.open) {
           showDetails(selected);
+          if (dialog.open) {
+            dialogTitle.textContent = readerTitle.textContent;
+            dialogContent.replaceChildren(readerMeta.cloneNode(true), readerBody.cloneNode(true));
+          }
+          reader.hidden = readerHidden;
           reader.scrollTop = scroll;
         }
       },

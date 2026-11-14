@@ -132,4 +132,5 @@ export interface ConstraintGraph {
   nodes: ConstraintGraphNode[];
   directoryNodes?: ConstraintGraphNode[];
   documents: Record<string, { body: string }>;
+  translations?: Record<'zh' | 'en', Pick<ConstraintGraph, 'nodes' | 'directoryNodes' | 'documents' | 'scope'>>;
 }

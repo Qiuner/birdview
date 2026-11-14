@@ -39,6 +39,14 @@ try {
   assert.ok(cardSize && cardSize.width > 150 && cardSize.height >= 75 && cardSize.height <= 77);
   await graph.locator('.cv-card[data-id="category-testing"]').click();
   await graph.locator('.cv-card[data-id="check-0"]').click();
+  for (const locale of ['en', 'zh']) {
+    await page.locator('#language').selectOption(locale);
+    await graph.locator('.cv-reader-body h3').filter({ hasText: locale === 'en' ? 'When it applies' : '什么时候用' }).waitFor();
+    assert.match(await graph.locator('.cv-card[data-id="category-testing"]').textContent() || '', locale === 'en' ? /Testing and verification/ : /测试与验证/);
+    assert.match(await graph.locator('.cv-reader-meta').textContent() || '', locale === 'en' ? /Untracked/ : /版本未追踪/);
+    assert.equal(await graph.locator('.cv-reader-title').textContent(), '检查0');
+    assert.match(await graph.locator('.cv-reader-body blockquote').textContent() || '', /Check work\./);
+  }
   assert.equal(await graph.locator('.cv-card[data-id="project"]').evaluate(node => node.classList.contains('cv-muted-branch')), true);
   assert.equal(await graph.locator('.cv-card[data-id="category-testing"]').evaluate(node => node.classList.contains('cv-muted-branch')), false);
   assert.equal(await graph.locator('.cv-edge.cv-relevant').count(), 1);
@@ -49,14 +57,30 @@ try {
   assert.match(await graph.locator('.cv-reader-body').textContent() || '', /Check work/);
   await graph.locator('.cv-card[data-id="check-1"]').press('Shift+Enter');
   assert.equal(await graph.locator('.cv-dialog').isVisible(), true);
+  // The modal traps focus, so exercise the same language observer directly.
+  await page.evaluate(() => { document.documentElement.lang = 'en'; });
+  await graph.locator('.cv-dialog-content h3').filter({ hasText: 'When it applies' }).waitFor();
+  assert.equal(await graph.locator('.cv-grouping').inputValue(), 'directories');
+  assert.equal(await graph.locator('.cv-search').inputValue(), '检查1');
   await page.keyboard.press('Escape');
   assert.equal(await graph.locator('.cv-dialog').isVisible(), false);
+  await graph.locator('.cv-search').fill('');
+  await graph.locator('.cv-tree-row[data-id="directory-root"]').click();
+  await graph.locator('.cv-card[data-id="directory-root"]').press('Shift+Enter');
+  await graph.locator('.cv-dialog-content h3').filter({ hasText: 'Local sources' }).waitFor();
+  await page.evaluate(() => { document.documentElement.lang = 'zh'; });
+  await graph.locator('.cv-dialog-content h3').filter({ hasText: '本目录来源' }).waitFor();
+  await page.keyboard.press('Escape');
   await graph.locator('.cv-grouping').selectOption('topics');
   await page.setViewportSize({ width: 390, height: 844 });
   if (await graph.locator('.cv-directory').isVisible()) await graph.locator('.cv-directory-heading button').click();
   await graph.locator('.cv-fit').click();
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   assert.ok((await graph.locator('.cv-viewport').boundingBox())!.height > 350);
+  await page.locator('#language').selectOption('en');
+  await graph.locator('.cv-card[data-id="category-testing"]').filter({ hasText: 'Testing and verification' }).waitFor();
+  await page.goto(pathToFileURL(file).href + '#lang=en&view=constraints');
+  await page.locator('.cv-card[data-id="category-testing"]').filter({ hasText: 'Testing and verification' }).waitFor();
 
   const branches = structuredClone(catalog);
   branches.rules.push({ ...catalog.rules[0]!, id: 'secure-check', category: 'security' });

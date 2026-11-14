@@ -8,7 +8,14 @@ export function buildConstraintGraph(catalog, language) {
     if (catalog.schema !== 'birdview.constraint-catalog/v1' || !catalog.project?.name || !Array.isArray(catalog.sources)
         || !catalog.coverage || !Array.isArray(catalog.references))
         throw new Error('Invalid constraint catalog');
-    return buildRuleGraph(catalog, language);
+    const reviewed = catalog;
+    const graph = buildRuleGraph(reviewed, language);
+    const translation = (locale) => {
+        const { nodes, directoryNodes, documents, scope } = buildRuleGraph(reviewed, locale);
+        return { nodes, ...(directoryNodes ? { directoryNodes } : {}), documents, scope };
+    };
+    graph.translations = { zh: translation('zh'), en: translation('en') };
+    return graph;
 }
 export function renderConstraintCatalog(catalog, _shell) {
     const payload = buildConstraintGraph(catalog);

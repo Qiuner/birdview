@@ -4,7 +4,7 @@
   <p><strong>编程的未来只剩两件事：约束与架构。</strong></p>
   <p>让 AI 先画出它眼中的系统、要遵守的规则和准备改动的范围，你确认后再动代码。<br>从盯着代码转向看架构，打开 AI coding 的黑盒。</p>
   <p>
-    <img src="https://img.shields.io/badge/%E7%89%88%E6%9C%AC-0.4.0-2f81f7?style=flat-square" alt="版本 0.4.0">
+    <img src="https://img.shields.io/badge/%E7%89%88%E6%9C%AC-0.5.0-2f81f7?style=flat-square" alt="版本 0.5.0">
     <img src="https://img.shields.io/badge/Node.js-18%2B-339933?style=flat-square&amp;logo=nodedotjs&amp;logoColor=white" alt="Node.js 18 或更高版本">
     <img src="https://img.shields.io/badge/license-MIT-2da44e?style=flat-square" alt="MIT 许可证">
     <img src="https://img.shields.io/badge/%E8%BE%93%E5%87%BA-%E7%8B%AC%E7%AB%8B%20HTML-e34f26?style=flat-square&amp;logo=html5&amp;logoColor=white" alt="独立 HTML 输出">
@@ -33,13 +33,13 @@ Birdview 是一个安装给 AI 编程 Agent 的 Skill。它把项目的**架构*
 
 > 演示使用仓库内置的虚构智能体运行框架，不代表观测到的生产活动。
 
-## v0.4.0 新功能
+## v0.5.0 新功能
 
-- **架构评审**：查看有源码依据的现状图、红笔批注和优化建议，确认方案后再实施。
-- **技能兼容性体检**：检查哪些请求会触发重叠技能，用文字报告说明具体场景、结论和证据。
-- **更改路径与范围外影响**：追踪已声明的计划，核对改动范围之外直接相连的模块。
+- **评审总评**：先给出健康等级、一句话结论和可跳转到建议的理由。评审 JSON 现在必须使用 schema 版本 `"3"` 并提供 `verdict`。
+- **更易阅读的评审页**：源码依据默认折叠、代码续行悬挂缩进、方案卡片更清晰，红笔批注避让图中内容。
+- **约束入口与语言切换**：通过 `--entry` 收集显式指定的 Markdown 规则文件，规则视图的生成标签可在中英文间切换。
 
-触发示例、安装方式和升级提醒见[发布说明](docs/release-notes-0.4.0.zh.md)。
+安装和迁移步骤见[发布说明](docs/release-notes-0.5.0.zh.md)。
 
 ## 为什么需要它
 
@@ -96,7 +96,7 @@ DeepSeek Harness 等其他宿主，使用各自的技能选择器，或明确要
 
 成功时，Agent 会交付一个能在浏览器里阅读的页面，包含架构、已审查的约束、来源证据和审查缺口。无法完成约束审查时，它应当说明缺了什么，而不是编造规则。只看图的请求交付后就结束；编码请求会停下来等你确认展示的方案。
 
-完整的安装和验证步骤见[安装指南](docs/installation.zh.md)，本版功能与限制见 [0.4.0 发布说明](docs/release-notes-0.4.0.zh.md)。
+完整的安装和验证步骤见[安装指南](docs/installation.zh.md)，本版功能与限制见 [0.5.0 发布说明](docs/release-notes-0.5.0.zh.md)。
 
 ### 示例页面
 
@@ -270,7 +270,7 @@ Schema 负责约束结构。[`scripts/validate.mjs`](scripts/validate.mjs) 还�
 
 ## 当前边界
 
-Birdview 0.4.0 基于文件快照：
+Birdview 0.5.0 基于文件快照：
 
 - 来源收集、规则适用性和合规验证分别表达，审查不完整时必须披露。
 - 用户确认保留在对话中，不由 HTML 批准按钮或文件写入锁强制执行。

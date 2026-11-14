@@ -4,7 +4,7 @@
   <p><strong>The future of programming comes down to two things: constraints and architecture.</strong></p>
   <p>Have the AI draw the system as it sees it, the rules it must follow and the scope it plans to change, then confirm before any code moves.<br>Shift your attention from code to architecture, and open the black box of AI coding.</p>
   <p>
-    <img src="https://img.shields.io/badge/version-0.4.0-2f81f7?style=flat-square" alt="Version 0.4.0">
+    <img src="https://img.shields.io/badge/version-0.5.0-2f81f7?style=flat-square" alt="Version 0.5.0">
     <img src="https://img.shields.io/badge/Node.js-18%2B-339933?style=flat-square&amp;logo=nodedotjs&amp;logoColor=white" alt="Node.js 18 or newer">
     <img src="https://img.shields.io/badge/license-MIT-2da44e?style=flat-square" alt="MIT License">
     <img src="https://img.shields.io/badge/output-standalone%20HTML-e34f26?style=flat-square&amp;logo=html5&amp;logoColor=white" alt="Standalone HTML output">
@@ -33,13 +33,13 @@ Birdview is a skill for AI coding agents. It draws a project's **architecture**,
 
 > The demo uses the fictional agent harness included in this repository. It does not represent observed production activity.
 
-## New in v0.4.0
+## New in v0.5.0
 
-- **Architecture review**: see source-backed current drawings, red-pencil findings and proposed redesigns before approving implementation.
-- **Skill compatibility audit**: understand which requests can trigger overlapping skills, with scenario-specific conclusions and evidence in a text report.
-- **Change paths and outside-scope impact**: trace the declared plan and inspect directly connected modules outside its scope.
+- **Review verdict**: start with a health grade, one-sentence conclusion and reasons linked to the proposals. Review JSON now requires schema version `"3"` and a `verdict`.
+- **More readable reviews**: folded source evidence, hanging code indentation, clearer proposal cards and red-pencil notes that avoid diagram content.
+- **Constraint entries and language switching**: discover explicitly requested Markdown rule files with `--entry`, and switch generated rule-view labels between Chinese and English.
 
-See the [release notes](docs/release-notes-0.4.0.md) for invocation examples, installation and upgrade notes.
+See the [release notes](docs/release-notes-0.5.0.md) for installation and migration instructions.
 
 ## Why Birdview
 
@@ -96,7 +96,7 @@ For DeepSeek Harness and other hosts, use their skill selector or explicitly ask
 
 When it works, the agent delivers a browser-readable page with the architecture, reviewed constraints, source evidence and review gaps. If constraints cannot be reviewed, it should explain the missing coverage instead of inventing rules. Map-only requests end after delivery; coding requests stop and wait for you to confirm the displayed plan.
 
-See the [installation guide](docs/installation.md) for complete setup and verification steps, and the [0.4.0 release notes](docs/release-notes-0.4.0.md) for this release's features and limitations.
+See the [installation guide](docs/installation.md) for complete setup and verification steps, and the [0.5.0 release notes](docs/release-notes-0.5.0.md) for this release's features and limitations.
 
 ### Example Pages
 
@@ -270,7 +270,7 @@ The schemas enforce structure. [`scripts/validate.mjs`](scripts/validate.mjs) al
 
 ## Current Boundaries
 
-Birdview 0.4.0 uses file snapshots:
+Birdview 0.5.0 uses file snapshots:
 
 - Collected sources, rule applicability and verified compliance are distinct; incomplete review must be disclosed.
 - User confirmation is recorded in the conversation, not enforced by an HTML approval button or filesystem lock.

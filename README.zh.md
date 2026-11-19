@@ -33,13 +33,16 @@ Birdview 是一个安装给 AI 编程 Agent 的 Skill。它把项目的**架构*
 
 > 演示使用仓库内置的虚构智能体运行框架，不代表观测到的生产活动。
 
-## v0.5.0 新功能
+## 🗞️ 更新动态
 
-- **评审总评**：先给出健康等级、一句话结论和可跳转到建议的理由。评审 JSON 现在必须使用 schema 版本 `"3"` 并提供 `verdict`。
-- **更易阅读的评审页**：源码依据默认折叠、代码续行悬挂缩进、方案卡片更清晰，红笔批注避让图中内容。
-- **约束入口与语言切换**：通过 `--entry` 收集显式指定的 Markdown 规则文件，规则视图的生成标签可在中英文间切换。
-
-安装和迁移步骤见[发布说明](docs/release-notes-0.5.0.zh.md)。
+- **2026-11-14** — [v0.5.0](docs/release-notes-0.5.0.zh.md)：**评审总评与可读性改进**——健康等级与可跳转的理由、默认折叠的源码依据、更清晰的方案卡片；支持显式约束入口与中英文规则标签。评审 JSON 现在必须使用 schema 版本 `"3"` 并提供 `verdict`。
+- **2026-10-08** — [v0.4.0](docs/release-notes-0.4.0.zh.md)：**架构评审与技能兼容性**——现状图和方案图附带可核验的源码引文，支持技能触发审计与范围外影响路径。
+- **2026-09-22** — [v0.3.1](docs/release-notes-0.3.1.zh.md)：修复符号链接下的 CLI 启动，强化安装诊断，优化查看器动效。
+- **2026-09-20** — [v0.3.0](docs/release-notes-0.3.0.zh.md)：**默认按需调用**——实施前确认已展示的地图和计划；提供类型化约束图与可复现的分发产物。
+- **2026-09-17** — [v0.2.1](docs/release-notes-0.2.1.zh.md)：优先从源码解决规划问题，按证据指导架构评审，官网提供多 Agent 安装选项。
+- **2026-09-15** — [v0.2.0](docs/release-notes-0.2.0.zh.md)：提供 Codex、Claude Code 和 DeepSeek Harness 安装指引，新增 `doctor` 依赖与渲染器检查。
+- **2026-09-13** — [v0.1.1](docs/release-notes-0.1.1.zh.md)：简化查看器品牌展示，显示画布控件，按视图展示活动历史，明确引导步骤状态。
+- **2026-09-12** — [v0.1.0](docs/release-notes-0.1.0.zh.md)：**首次发布**——独立架构与更改页面，包含源码依据、活动历史和中英文控件。
 
 ## 为什么需要它
 
@@ -299,7 +302,7 @@ node scripts/check-docs.mjs
   <img src="docs/star-history.svg" alt="Birdview GitHub Star 增长曲线" width="100%">
 </p>
 
-> 图表基于 2026 年 10 月 8 日当前的 GitHub stargazer 列表生成。GitHub 后续可能清理异常 Star，公开记录见 [Issue #33](https://github.com/Qiuner/birdview/issues/33)。
+> 图表基于 2026 年 11 月 19 日（UTC）当前的 GitHub stargazer 列表生成，重建的是当前仍保留的 Star 时间线，并非各时点的历史总数。GitHub 后续可能清理异常 Star，公开记录见 [Issue #33](https://github.com/Qiuner/birdview/issues/33)。
 
 ## 许可证
 

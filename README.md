@@ -33,13 +33,16 @@ Birdview is a skill for AI coding agents. It draws a project's **architecture**,
 
 > The demo uses the fictional agent harness included in this repository. It does not represent observed production activity.
 
-## New in v0.5.0
+## 🗞️ News
 
-- **Review verdict**: start with a health grade, one-sentence conclusion and reasons linked to the proposals. Review JSON now requires schema version `"3"` and a `verdict`.
-- **More readable reviews**: folded source evidence, hanging code indentation, clearer proposal cards and red-pencil notes that avoid diagram content.
-- **Constraint entries and language switching**: discover explicitly requested Markdown rule files with `--entry`, and switch generated rule-view labels between Chinese and English.
-
-See the [release notes](docs/release-notes-0.5.0.md) for installation and migration instructions.
+- **2026-11-14** — [v0.5.0](docs/release-notes-0.5.0.md): **Review verdicts and readability** — health grades with linked reasons, folded source evidence and clearer proposal cards; explicit constraint entries and bilingual rule labels. Review JSON now requires schema version `"3"` and a `verdict`.
+- **2026-10-08** — [v0.4.0](docs/release-notes-0.4.0.md): **Architecture review and skill compatibility** — current and proposed drawings with checkable source quotations, skill trigger audits and outside-scope change paths.
+- **2026-09-22** — [v0.3.1](docs/release-notes-0.3.1.md): fixed CLI startup through symbolic links, strengthened installation diagnostics and refined viewer motion.
+- **2026-09-20** — [v0.3.0](docs/release-notes-0.3.0.md): **On-demand by default** — confirm the displayed map and plan before implementation; typed constraint graphs and reproducible distribution artifacts.
+- **2026-09-17** — [v0.2.1](docs/release-notes-0.2.1.md): source-first planning, evidence-based architecture review guidance and multi-agent installation choices on the website.
+- **2026-09-15** — [v0.2.0](docs/release-notes-0.2.0.md): installation guidance for Codex, Claude Code and DeepSeek Harness, plus the `doctor` dependency and renderer check.
+- **2026-09-13** — [v0.1.1](docs/release-notes-0.1.1.md): simpler viewer branding, visible canvas controls, view-specific activity history and explicit guide step states.
+- **2026-09-12** — [v0.1.0](docs/release-notes-0.1.0.md): **First release** — standalone architecture and changes pages with source evidence, activity history and Chinese/English controls.
 
 ## Why Birdview
 
@@ -299,7 +302,7 @@ For the field semantics and invariants, read the [Birdview contract](references/
   <img src="docs/star-history.svg" alt="Birdview GitHub Star history" width="100%">
 </p>
 
-> Snapshot generated from the current GitHub stargazer list on October 8, 2026. GitHub may later remove anomalous stars; see [Issue #33](https://github.com/Qiuner/birdview/issues/33) for the public record.
+> Snapshot generated from the current GitHub stargazer list on November 19, 2026 (UTC). This reconstructs the timeline of currently retained stars, not historical total counts. GitHub may later remove anomalous stars; see [Issue #33](https://github.com/Qiuner/birdview/issues/33) for the public record.
 
 ## License
 
